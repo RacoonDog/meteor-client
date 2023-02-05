@@ -5,7 +5,6 @@
 
 package meteordevelopment.meteorclient.systems.commands.arguments;
 
-import com.google.common.collect.Streams;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -47,7 +46,7 @@ public class ProfileArgumentType implements ArgumentType<String> {
 
     @Override
     public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-        return suggestMatching(Streams.stream(Profiles.get()).map(profile -> profile.name.get()), builder);
+        return suggestMatching(Profiles.get(), builder, profile -> profile.name.get(), o -> null);
     }
 
     @Override

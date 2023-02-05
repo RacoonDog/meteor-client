@@ -26,12 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LightOverlay extends Module {
-    public enum Spawn {
-        Never,
-        Potential,
-        Always
-    }
-
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgColors = settings.createGroup("Colors");
 
@@ -86,8 +80,6 @@ public class LightOverlay extends Module {
     private final Pool<Cross> crossPool = new Pool<>(Cross::new);
     private final List<Cross> crosses = new ArrayList<>();
 
-    private final BlockPos.Mutable bp = new BlockPos.Mutable();
-
     private final Mesh mesh = new ShaderMesh(Shaders.POS_COLOR, DrawMode.Lines, Mesh.Attrib.Vec3, Mesh.Attrib.Color);
 
     public LightOverlay() {
@@ -96,8 +88,7 @@ public class LightOverlay extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        for (Cross cross : crosses) crossPool.free(cross);
-        crosses.clear();
+        crossPool.freeAll(crosses);
 
         BlockIterator.register(horizontalRange.get(), verticalRange.get(), (blockPos, blockState) -> {
             switch (BlockUtils.isValidMobSpawn(blockPos, newMobSpawnLightLevel.get())) {
@@ -120,7 +111,9 @@ public class LightOverlay extends Module {
         mesh.depthTest = !seeThroughBlocks.get();
         mesh.begin();
 
-        for (Cross cross : crosses) cross.render();
+        for (Cross cross : crosses) {
+            if (seeThroughBlocks.get() || cross.y < mc.gameRenderer.getCamera().getPos().y) cross.render();
+        }
 
         mesh.end();
         mesh.render(event.matrices);

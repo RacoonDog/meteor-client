@@ -13,7 +13,6 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.command.CommandSource;
 import net.minecraft.text.Text;
 
 import java.util.Collection;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
+import static net.minecraft.command.CommandSource.suggestMatching;
 
 public class PlayerListEntryArgumentType implements ArgumentType<PlayerListEntry> {
     private static final DynamicCommandExceptionType NO_SUCH_PLAYER = new DynamicCommandExceptionType(name -> Text.literal("Player list entry with name " + name + " doesn't exist."));
@@ -53,7 +53,7 @@ public class PlayerListEntryArgumentType implements ArgumentType<PlayerListEntry
 
     @Override
     public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-        return CommandSource.suggestMatching(mc.getNetworkHandler().getPlayerList().stream().map(playerListEntry -> playerListEntry.getProfile().getName()), builder);
+        return suggestMatching(mc.getNetworkHandler().getPlayerList(), builder, entry -> entry.getProfile().getName(), o -> null);
     }
 
     @Override

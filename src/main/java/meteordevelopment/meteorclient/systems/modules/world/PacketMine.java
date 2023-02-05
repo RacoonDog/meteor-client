@@ -24,15 +24,9 @@ import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.enchantment.Enchantments;
-import net.minecraft.entity.effect.StatusEffectUtil;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
-import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -137,8 +131,8 @@ public class PacketMine extends Module {
 
     @Override
     public void onDeactivate() {
-        for (MyBlock block : blocks) blockPool.free(block);
-        blocks.clear();
+        blockPool.freeAll(blocks);
+
         if (shouldUpdateSlot) {
             mc.player.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot));
             shouldUpdateSlot = false;
@@ -168,7 +162,7 @@ public class PacketMine extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        blocks.removeIf(MyBlock::shouldRemove);
+        blockPool.freeIf(blocks, MyBlock::shouldRemove);
 
         if (shouldUpdateSlot) {
             mc.player.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot));

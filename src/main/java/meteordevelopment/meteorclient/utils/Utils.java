@@ -476,18 +476,15 @@ public class Utils {
     }
 
     public static int clamp(int value, int min, int max) {
-        if (value < min) return min;
-        return Math.min(value, max);
+        return Math.max(min, Math.min(value, max));
     }
 
     public static float clamp(float value, float min, float max) {
-        if (value < min) return min;
-        return Math.min(value, max);
+        return Math.max(min, Math.min(value, max));
     }
 
     public static double clamp(double value, double min, double max) {
-        if (value < min) return min;
-        return Math.min(value, max);
+        return Math.max(min, Math.min(value, max));
     }
 
     public static void addEnchantment(ItemStack itemStack, Enchantment enchantment, int level) {
@@ -548,10 +545,10 @@ public class Utils {
 
     @SafeVarargs
     public static <T> Object2BooleanOpenHashMap<T> asO2BMap(T... checked) {
-        Map<T, Boolean> map = new HashMap<>();
+        Object2BooleanOpenHashMap<T> map = new Object2BooleanOpenHashMap<>();
         for (T item : checked)
             map.put(item, true);
-        return new Object2BooleanOpenHashMap<>(map);
+        return map;
     }
 
     public static Color lerp(Color first, Color second, @Range(from = 0, to = 1) float v) {

@@ -39,15 +39,18 @@ public class TargetUtils {
         targetList.clear();
 
         for (Entity entity : mc.world.getEntities()) {
-            if (entity != null && isGood.test(entity)) targetList.add(entity);
+            if (entity != null && isGood.test(entity)) {
+                targetList.add(entity);
+                if (targetList.size() >= maxCount) break;
+            }
         }
 
-        FakePlayerManager.forEach(fp -> {
+        if (targetList.size() < maxCount) FakePlayerManager.forEach(fp -> {
             if (fp != null && isGood.test(fp)) targetList.add(fp);
         });
 
         targetList.sort((e1, e2) -> sort(e1, e2, sortPriority));
-        targetList.removeIf(entity -> targetList.indexOf(entity) > maxCount -1);
+        if (targetList.size() > maxCount) for (int i = targetList.size() - 1; i >= maxCount; --i) targetList.remove(maxCount);
     }
 
     public static PlayerEntity getPlayerTarget(double range, SortPriority priority) {
@@ -95,12 +98,12 @@ public class TargetUtils {
         else if (e1l && !e2l) return 1;
         else if (!e1l) return -1;
 
-        double e1yaw = Math.abs(Rotations.getYaw(e1) - mc.player.getYaw());
-        double e2yaw = Math.abs(Rotations.getYaw(e2) - mc.player.getYaw());
+        double e1yaw = Rotations.getYaw(e1) - mc.player.getYaw();
+        double e2yaw = Rotations.getYaw(e2) - mc.player.getYaw();
 
-        double e1pitch = Math.abs(Rotations.getPitch(e1) - mc.player.getPitch());
-        double e2pitch = Math.abs(Rotations.getPitch(e2) - mc.player.getPitch());
+        double e1pitch = Rotations.getPitch(e1) - mc.player.getPitch();
+        double e2pitch = Rotations.getPitch(e2) - mc.player.getPitch();
 
-        return Double.compare(Math.sqrt(e1yaw * e1yaw + e1pitch * e1pitch), Math.sqrt(e2yaw * e2yaw + e2pitch * e2pitch));
+        return Double.compare(org.joml.Math.fma(e1yaw, e1yaw, e1pitch * e1pitch), org.joml.Math.fma(e2yaw, e2yaw, e2pitch * e2pitch));
     }
 }

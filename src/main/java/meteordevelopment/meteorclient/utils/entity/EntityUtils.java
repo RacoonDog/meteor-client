@@ -126,7 +126,7 @@ public class EntityUtils {
             if (block != Blocks.OBSIDIAN && block != Blocks.NETHERITE_BLOCK && block != Blocks.CRYING_OBSIDIAN
             && block != Blocks.RESPAWN_ANCHOR && block != Blocks.ANCIENT_DEBRIS) continue;
 
-            double testDistance = PlayerUtils.distanceTo(testPos);
+            double testDistance = PlayerUtils.squaredDistanceTo(testPos);
             if (testDistance < bestDistance) {
                 bestDistance = testDistance;
                 bestDirection = direction;

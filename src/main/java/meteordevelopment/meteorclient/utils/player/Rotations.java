@@ -170,13 +170,7 @@ public class Rotations {
     }
 
     public static double getPitch(Vec3d pos) {
-        double diffX = pos.getX() - mc.player.getX();
-        double diffY = pos.getY() - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
-        double diffZ = pos.getZ() - mc.player.getZ();
-
-        double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
-
-        return mc.player.getPitch() + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.getPitch());
+        return getPitch(pos.x, pos.y, pos.z);
     }
 
     public static double getPitch(Entity entity, Target target) {
@@ -185,13 +179,7 @@ public class Rotations {
         else if (target == Target.Body) y = entity.getY() + entity.getHeight() / 2;
         else y = entity.getY();
 
-        double diffX = entity.getX() - mc.player.getX();
-        double diffY = y - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
-        double diffZ = entity.getZ() - mc.player.getZ();
-
-        double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
-
-        return mc.player.getPitch() + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.getPitch());
+        return getPitch(entity.getX(), y, entity.getZ());
     }
 
     public static double getPitch(Entity entity) {
@@ -203,11 +191,15 @@ public class Rotations {
     }
 
     public static double getPitch(BlockPos pos) {
-        double diffX = pos.getX() + 0.5 - mc.player.getX();
-        double diffY = pos.getY() + 0.5 - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
-        double diffZ = pos.getZ() + 0.5 - mc.player.getZ();
+        return getPitch(pos.getX(), pos.getY(), pos.getZ());
+    }
 
-        double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
+    public static double getPitch(double x, double y, double z) {
+        double diffX = x + 0.5 - mc.player.getX();
+        double diffY = y + 0.5 - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
+        double diffZ = z + 0.5 - mc.player.getZ();
+
+        double diffXZ = Math.sqrt(org.joml.Math.fma(diffX, diffX, diffZ + diffZ));
 
         return mc.player.getPitch() + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.getPitch());
     }

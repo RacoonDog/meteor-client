@@ -111,16 +111,14 @@ public class RenderUtils {
 
     @EventHandler
     private static void onTick(TickEvent.Pre event) {
-        if (renderBlocks.size() == 0) return;
+        if (renderBlocks.isEmpty()) return;
 
-        renderBlocks.forEach(RenderBlock::tick);
-
-        Iterator<RenderBlock> iterator = renderBlocks.iterator();
-        while (iterator.hasNext()) {
-            RenderBlock next = iterator.next();
-            if (next.ticks <= 0) {
-                iterator.remove();
-                renderBlockPool.free(next);
+        for (Iterator<RenderBlock> it = renderBlocks.iterator(); it.hasNext();) {
+            RenderBlock renderBlock = it.next();
+            renderBlock.tick();
+            if (renderBlock.ticks <= 0) {
+                it.remove();
+                renderBlockPool.free(renderBlock);
             }
         }
     }

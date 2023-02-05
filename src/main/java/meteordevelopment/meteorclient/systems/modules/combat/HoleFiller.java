@@ -14,6 +14,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.utils.entity.EntityUtils;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
@@ -33,7 +34,8 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -246,6 +248,7 @@ public class HoleFiller extends Module {
         FindItemResult block = InvUtils.findInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())));
         if (!block.found()) return;
 
+        MutableInt counter = new MutableInt(0);
         BlockIterator.register(searchRadius.get(), searchRadius.get(), (blockPos, blockState) -> {
             if (!validHole(blockPos)) return;
 
@@ -274,11 +277,16 @@ public class HoleFiller extends Module {
                     air = direction;
                 }
 
-                if (obsidian + bedrock == 5 && air == null) holes.add(new Hole(blockPos, (byte) 0));
-                else if (obsidian + bedrock == 8 && doubles.get() && air != null) {
+                if (obsidian + bedrock == 5 && air == null) {
+                    holes.add(new Hole(blockPos, (byte) 0));
+                    counter.increment();
+                } else if (obsidian + bedrock == 8 && doubles.get() && air != null) {
                     holes.add(new Hole(blockPos, Dir.get(air)));
+                    counter.increment();
                 }
             }
+
+            if (counter.intValue() >= blocksPerTick.get()) BlockIterator.disableCurrent();
         });
 
         BlockIterator.after(() -> {
@@ -327,10 +335,10 @@ public class HoleFiller extends Module {
         testPos.add(0, -1, 0);
 
         ((IBox) box).set(pos);
-        if (!mc.world.getOtherEntities(null, box, entity
+        if (EntityUtils.intersectsWithEntity(box, entity
             -> entity instanceof PlayerEntity
             || entity instanceof TntEntity
-            || entity instanceof EndCrystalEntity).isEmpty()) return false;
+            || entity instanceof EndCrystalEntity)) return false;
 
         if (!smart.get() || forceFill.get().isPressed()) return true;
 
@@ -373,22 +381,22 @@ public class HoleFiller extends Module {
     }
 
     private double distance(PlayerEntity player, BlockPos pos, boolean feet) {
-        Vec3d testVec = player.getPos();
-        if (!feet) testVec.add(0, player.getEyeHeight(mc.player.getPose()), 0);
+        Vector3d playerVec = new Vector3d(player.getX(), player.getY(), player.getZ());
 
+        if (!feet) playerVec.add(0, player.getEyeHeight(player.getPose()), 0);
         else if (predict.get()) {
-            testVec.add(
-                player.getX() - player.prevX,
-                player.getY() - player.prevY,
-                player.getZ() - player.prevZ
+            playerVec.mul(2).sub(
+                player.prevX,
+                player.prevY,
+                player.prevZ
             );
         }
 
-        double i = testVec.x - (pos.getX() + 0.5);
-        double j = testVec.y - (pos.getY() + ((feet) ? 1 : 0.5));
-        double k = testVec.z - (pos.getZ() + 0.5);
-
-        return Math.sqrt(i * i + j * j + k * k);
+        return playerVec.distance(
+            pos.getX() + 0.5,
+            pos.getY() + (feet ? 1 : 0.5),
+            pos.getZ() + 0.5
+        );
     }
 
     private static class Hole {

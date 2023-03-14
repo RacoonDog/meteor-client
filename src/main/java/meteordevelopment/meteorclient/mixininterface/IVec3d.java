@@ -20,5 +20,7 @@ public interface IVec3d {
 
     void setXZ(double x, double z);
 
+    void setX(double x);
     void setY(double y);
+    void setZ(double z);
 }

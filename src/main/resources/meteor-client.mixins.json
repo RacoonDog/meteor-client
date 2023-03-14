@@ -76,7 +76,6 @@
     "EntityRendererMixin",
     "EntityTrackingSectionAccessor",
     "EntityVelocityUpdateS2CPacketAccessor",
-    "ExplosionMixin",
     "ExplosionS2CPacketMixin",
     "FireworkRocketEntityMixin",
     "FireworksSparkParticleMixin",

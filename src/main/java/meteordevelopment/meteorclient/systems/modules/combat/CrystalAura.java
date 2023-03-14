@@ -6,7 +6,11 @@
 package meteordevelopment.meteorclient.systems.modules.combat;
 
 import com.google.common.util.concurrent.AtomicDouble;
-import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import meteordevelopment.meteorclient.events.entity.EntityAddedEvent;
 import meteordevelopment.meteorclient.events.entity.EntityRemovedEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
@@ -673,16 +677,17 @@ public class CrystalAura extends Module {
         offItem = mc.player.getOffHandStack().getItem();
 
         // Update waiting to explode crystals and mark them as existing if reached threshold
-        for (IntIterator it = waitingToExplode.keySet().iterator(); it.hasNext();) {
-            int id = it.nextInt();
-            int ticks = waitingToExplode.get(id);
+        for (ObjectIterator<Int2IntMap.Entry> it = waitingToExplode.int2IntEntrySet().iterator(); it.hasNext();) {
+            Int2IntMap.Entry e = it.next();
+            int id = e.getIntKey();
+            int ticks = e.getIntValue();
 
             if (ticks > 3) {
                 it.remove();
                 removed.remove(id);
             }
             else {
-                waitingToExplode.put(id, ticks + 1);
+                e.setValue(ticks + 1);
             }
         }
 

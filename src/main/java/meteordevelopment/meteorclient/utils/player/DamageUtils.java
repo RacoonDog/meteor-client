@@ -6,13 +6,12 @@
 package meteordevelopment.meteorclient.utils.player;
 
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.events.game.GameJoinedEvent;
-import meteordevelopment.meteorclient.mixininterface.IExplosion;
-import meteordevelopment.meteorclient.mixininterface.IRaycastContext;
+import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
 import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
+import meteordevelopment.meteorclient.utils.world.ChunkCache;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -29,11 +28,8 @@ import net.minecraft.item.Items;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.*;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.GameMode;
-import net.minecraft.world.RaycastContext;
 import net.minecraft.world.explosion.Explosion;
 
 import java.util.Objects;
@@ -42,8 +38,8 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class DamageUtils {
     private static final Vec3d vec3d = new Vec3d(0, 0, 0);
-    private static Explosion explosion;
-    private static RaycastContext raycastContext;
+    private static final DamageSource source = DamageSource.explosion(null);
+    private static ChunkCache chunkCache;
 
     @PreInit
     public static void init() {
@@ -51,9 +47,8 @@ public class DamageUtils {
     }
 
     @EventHandler
-    private static void onGameJoined(GameJoinedEvent event) {
-        explosion = new Explosion(mc.world, null, 0, 0, 0, 6, false, Explosion.DestructionType.DESTROY);
-        raycastContext = new RaycastContext(null, null, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.ANY, mc.player);
+    private static void onTick(TickEvent.Pre event) {
+        chunkCache = null;
     }
 
     // Crystal damage
@@ -65,19 +60,19 @@ public class DamageUtils {
         ((IVec3d) vec3d).set(player.getPos().x, player.getPos().y, player.getPos().z);
         if (predictMovement) ((IVec3d) vec3d).set(vec3d.x + player.getVelocity().x, vec3d.y + player.getVelocity().y, vec3d.z + player.getVelocity().z);
 
-        double modDistance = Math.sqrt(vec3d.squaredDistanceTo(crystal));
-        if (modDistance > 12) return 0;
+        double modDistance = vec3d.squaredDistanceTo(crystal);
+        if (modDistance > 144) return 0;
 
-        double exposure = getExposure(crystal, player, predictMovement, raycastContext, obsidianPos, ignoreTerrain);
-        double impact = (1 - (modDistance / 12)) * exposure;
+        if (chunkCache == null) chunkCache = ChunkCache.create();
+        double exposure = getExposure(crystal, player, predictMovement, obsidianPos, ignoreTerrain);
+        double impact = (1 - (Math.sqrt(modDistance) / 12)) * exposure;
         double damage = ((impact * impact + impact) / 2 * 7 * (6 * 2) + 1);
 
         damage = getDamageForDifficulty(damage);
         damage = DamageUtil.getDamageLeft((float) damage, (float) player.getArmor(), (float) player.getAttributeInstance(EntityAttributes.GENERIC_ARMOR_TOUGHNESS).getValue());
         damage = resistanceReduction(player, damage);
 
-        ((IExplosion) explosion).set(crystal, 6, false);
-        damage = blastProtReduction(player, damage, explosion);
+        damage = blastProtReduction(player, damage);
 
         return damage < 0 ? 0 : damage;
     }
@@ -140,6 +135,7 @@ public class DamageUtils {
         double modDistance = Math.sqrt(player.squaredDistanceTo(bed));
         if (modDistance > 10) return 0;
 
+        if (chunkCache == null) chunkCache = ChunkCache.create();
         double exposure = Explosion.getExposure(bed, player);
         double impact = (1.0 - (modDistance / 10.0)) * exposure;
         double damage = (impact * impact + impact) / 2 * 7 * (5 * 2) + 1;
@@ -154,8 +150,7 @@ public class DamageUtils {
         damage = DamageUtil.getDamageLeft((float) damage, (float) player.getArmor(), (float) player.getAttributeInstance(EntityAttributes.GENERIC_ARMOR_TOUGHNESS).getValue());
 
         // Reduce by enchants
-        ((IExplosion) explosion).set(bed, 5, true);
-        damage = blastProtReduction(player, damage, explosion);
+        damage = blastProtReduction(player, damage);
 
         if (damage < 0) damage = 0;
         return damage;
@@ -182,31 +177,35 @@ public class DamageUtils {
     }
 
     private static double normalProtReduction(Entity player, double damage) {
+        if (damage < 0) return 0;
+
         int protLevel = EnchantmentHelper.getProtectionAmount(player.getArmorItems(), DamageSource.GENERIC);
         if (protLevel > 20) protLevel = 20;
 
-        damage *= 1 - (protLevel / 25.0);
-        return damage < 0 ? 0 : damage;
+        return damage * 1 - (protLevel / 25.0);
     }
 
-    private static double blastProtReduction(Entity player, double damage, Explosion explosion) {
-        int protLevel = EnchantmentHelper.getProtectionAmount(player.getArmorItems(), DamageSource.explosion(explosion));
+    private static double blastProtReduction(Entity player, double damage) {
+        if (damage < 0) return 0;
+
+        int protLevel = EnchantmentHelper.getProtectionAmount(player.getArmorItems(), source);
         if (protLevel > 20) protLevel = 20;
 
-        damage *= (1 - (protLevel / 25.0));
-        return damage < 0 ? 0 : damage;
+        return damage * (1 - (protLevel / 25.0));
     }
 
     private static double resistanceReduction(LivingEntity player, double damage) {
+        if (damage < 0) return 0;
+
         if (player.hasStatusEffect(StatusEffects.RESISTANCE)) {
             int lvl = (player.getStatusEffect(StatusEffects.RESISTANCE).getAmplifier() + 1);
-            damage *= (1 - (lvl * 0.2));
+            return damage * (1 - (lvl * 0.2));
         }
 
-        return damage < 0 ? 0 : damage;
+        return damage;
     }
 
-    private static double getExposure(Vec3d source, Entity entity, boolean predictMovement, RaycastContext raycastContext, BlockPos obsidianPos, boolean ignoreTerrain) {
+    private static double getExposure(Vec3d source, Entity entity, boolean predictMovement, BlockPos obsidianPos, boolean ignoreTerrain) {
         Box box = entity.getBoundingBox();
         if (predictMovement) {
             Vec3d v = entity.getVelocity();
@@ -224,16 +223,18 @@ public class DamageUtils {
             int j = 0;
 
             for (double k = 0; k <= 1; k += d) {
+                double n = MathHelper.lerp(k, box.minX, box.maxX);
+                ((IVec3d) vec3d).setX(n + g);
+
                 for (double l = 0; l <= 1; l += e) {
+                    double o = MathHelper.lerp(l, box.minY, box.maxY);
+                    ((IVec3d) vec3d).setY(o);
+
                     for (double m = 0; m <= 1; m += f) {
-                        double n = MathHelper.lerp(k, box.minX, box.maxX);
-                        double o = MathHelper.lerp(l, box.minY, box.maxY);
                         double p = MathHelper.lerp(m, box.minZ, box.maxZ);
+                        ((IVec3d) vec3d).setZ(p + h);
 
-                        ((IVec3d) vec3d).set(n + g, o, p + h);
-                        ((IRaycastContext) raycastContext).set(vec3d, source, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, entity);
-
-                        if (raycast(raycastContext, obsidianPos, ignoreTerrain).getType() == HitResult.Type.MISS) i++;
+                        if (raycast(vec3d, source, obsidianPos, ignoreTerrain) == HitResult.Type.MISS) i++;
 
                         j++;
                     }
@@ -246,30 +247,17 @@ public class DamageUtils {
         return 0;
     }
 
-    private static BlockHitResult raycast(RaycastContext context, BlockPos obsidianPos, boolean ignoreTerrain) {
-        return BlockView.raycast(context.getStart(), context.getEnd(), context, (raycastContext, blockPos) -> {
+    private static HitResult.Type raycast(Vec3d start, Vec3d end, BlockPos obsidianPos, boolean ignoreTerrain) {
+        return BlockView.raycast(start, end, null, (_null, blockPos) -> {
             BlockState blockState;
             if (blockPos.equals(obsidianPos)) blockState = Blocks.OBSIDIAN.getDefaultState();
             else {
-                blockState = mc.world.getBlockState(blockPos);
-                if (blockState.getBlock().getBlastResistance() < 600 && ignoreTerrain) blockState = Blocks.AIR.getDefaultState();
+                blockState = chunkCache.get(blockPos.getX(), blockPos.getZ()).getBlockState(blockPos);
+                if (blockState.getBlock().getBlastResistance() < 600 && ignoreTerrain) return null;
             }
 
-            Vec3d vec3d = raycastContext.getStart();
-            Vec3d vec3d2 = raycastContext.getEnd();
-
-            VoxelShape voxelShape = raycastContext.getBlockShape(blockState, mc.world, blockPos);
-            BlockHitResult blockHitResult = mc.world.raycastBlock(vec3d, vec3d2, blockPos, voxelShape, blockState);
-            VoxelShape voxelShape2 = VoxelShapes.empty();
-            BlockHitResult blockHitResult2 = voxelShape2.raycast(vec3d, vec3d2, blockPos);
-
-            double d = blockHitResult == null ? Double.MAX_VALUE : raycastContext.getStart().squaredDistanceTo(blockHitResult.getPos());
-            double e = blockHitResult2 == null ? Double.MAX_VALUE : raycastContext.getStart().squaredDistanceTo(blockHitResult2.getPos());
-
-            return d <= e ? blockHitResult : blockHitResult2;
-        }, (raycastContext) -> {
-            Vec3d vec3d = raycastContext.getStart().subtract(raycastContext.getEnd());
-            return BlockHitResult.createMissed(raycastContext.getEnd(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), new BlockPos(raycastContext.getEnd()));
-        });
+            BlockHitResult hitResult = blockState.getOutlineShape(mc.world, blockPos).raycast(start, end, blockPos);
+            return hitResult == null ? null : hitResult.getType();
+        }, (_null) -> HitResult.Type.MISS);
     }
 }

@@ -14,6 +14,7 @@ import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.Pool;
+import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.RenderUtils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockIterator;
@@ -339,7 +340,7 @@ public class Nuker extends Module {
         // Find blocks to break
         BlockIterator.register(Math.max((int) Math.ceil(range.get()+1), maxh), Math.max((int) Math.ceil(range.get()), maxv), (blockPos, blockState) -> {
             // Check for air, unbreakable blocks and distance
-            boolean toofarSphere = Utils.squaredDistance(pX, pY, pZ, blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5) > rangeSq;
+            boolean toofarSphere = PlayerUtils.squaredDistance(pX, pY, pZ, blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5) > rangeSq;
             boolean toofarUniformCube = maxDist(Math.floor(pX), Math.floor(pY), Math.floor(pZ), blockPos.getX(), blockPos.getY(), blockPos.getZ()) >= range.get();
             boolean toofarCube = !box.contains(Vec3d.ofCenter(blockPos));
 
@@ -369,7 +370,7 @@ public class Nuker extends Module {
 			if (sortMode.get() == SortMode.TopDown)
                 blocks.sort(Comparator.comparingDouble(value -> -1*value.getY()));
             else if (sortMode.get() != SortMode.None)
-                blocks.sort(Comparator.comparingDouble(value -> Utils.squaredDistance(pX, pY, pZ, value.getX() + 0.5, value.getY() + 0.5, value.getZ() + 0.5) * (sortMode.get() == SortMode.Closest ? 1 : -1)));
+                blocks.sort(Comparator.comparingDouble(value -> PlayerUtils.squaredDistance(pX, pY, pZ, value.getX() + 0.5, value.getY() + 0.5, value.getZ() + 0.5) * (sortMode.get() == SortMode.Closest ? 1 : -1)));
 
             // Check if some block was found
             if (blocks.isEmpty()) {
@@ -421,7 +422,7 @@ public class Nuker extends Module {
             blocks.clear();
         });
     }
-    
+
     @EventHandler(priority = EventPriority.HIGHEST)
     private void onBlockBreakingCooldown(BlockBreakingCooldownEvent event) {
         event.cooldown = 0;

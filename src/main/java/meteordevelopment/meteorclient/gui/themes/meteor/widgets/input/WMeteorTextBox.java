@@ -16,6 +16,7 @@ import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
+import net.minecraft.util.math.MathHelper;
 
 public class WMeteorTextBox extends WTextBox implements MeteorWidget {
     private boolean cursorVisible;
@@ -131,7 +132,7 @@ public class WMeteorTextBox extends WTextBox implements MeteorWidget {
 
         // Cursor
         animProgress += delta * 10 * (focused && cursorVisible ? 1 : -1);
-        animProgress = Utils.clamp(animProgress, 0, 1);
+        animProgress = MathHelper.clamp(animProgress, 0, 1);
 
         if ((focused && cursorVisible) || animProgress > 0) {
             renderer.setAlpha(animProgress);

@@ -21,6 +21,7 @@ import meteordevelopment.meteorclient.utils.render.ByteTexture;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -157,7 +158,7 @@ public class GuiRenderer {
 
     public boolean renderTooltip(double mouseX, double mouseY, double delta, MatrixStack matrices) {
         tooltipAnimProgress += (tooltip != null ? 1 : -1) * delta * 14;
-        tooltipAnimProgress = Utils.clamp(tooltipAnimProgress, 0, 1);
+        tooltipAnimProgress = MathHelper.clamp(tooltipAnimProgress, 0, 1);
 
         boolean toReturn = false;
 

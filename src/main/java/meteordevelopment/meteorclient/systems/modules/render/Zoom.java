@@ -129,7 +129,7 @@ public class Zoom extends Module {
         if (isActive()) time += event.frameTime * 5;
         else time -= event.frameTime * 5;
 
-        time = Utils.clamp(time, 0, 1);
+        time = MathHelper.clamp(time, 0, 1);
     }
 
     @EventHandler

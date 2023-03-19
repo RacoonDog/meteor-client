@@ -16,6 +16,7 @@ import meteordevelopment.meteorclient.utils.Utils;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.CameraSubmersionType;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.BlockView;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -105,6 +106,6 @@ public abstract class CameraMixin implements ICamera {
 
     @Override
     public void setRot(double yaw, double pitch) {
-        setRotation((float) yaw, (float) Utils.clamp(pitch, -90, 90));
+        setRotation((float) yaw, (float) MathHelper.clamp(pitch, -90, 90));
     }
 }

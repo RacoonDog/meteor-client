@@ -18,6 +18,7 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.BetterTooltips;
 import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.utils.player.EChestMemory;
+import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.PeekScreen;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.world.BlockEntityIterator;
@@ -294,18 +295,8 @@ public class Utils {
         return d[textLength][filterLength];
     }
 
-    public static double squaredDistance(double x1, double y1, double z1, double x2, double y2, double z2) {
-        double dX = x2 - x1;
-        double dY = y2 - y1;
-        double dZ = z2 - z1;
-        return dX * dX + dY * dY + dZ * dZ;
-    }
-
     public static double distance(double x1, double y1, double z1, double x2, double y2, double z2) {
-        double dX = x2 - x1;
-        double dY = y2 - y1;
-        double dZ = z2 - z1;
-        return Math.sqrt(dX * dX + dY * dY + dZ * dZ);
+        return Math.sqrt(PlayerUtils.squaredDistance(x1, y1, z1, x2, y2, z2));
     }
 
     public static String getFileWorldName() {
@@ -468,23 +459,11 @@ public class Utils {
     }
 
     public static boolean isShulker(Item item) {
-        return item == Items.SHULKER_BOX || item == Items.WHITE_SHULKER_BOX || item == Items.ORANGE_SHULKER_BOX || item == Items.MAGENTA_SHULKER_BOX || item == Items.LIGHT_BLUE_SHULKER_BOX || item == Items.YELLOW_SHULKER_BOX || item == Items.LIME_SHULKER_BOX || item == Items.PINK_SHULKER_BOX || item == Items.GRAY_SHULKER_BOX || item == Items.LIGHT_GRAY_SHULKER_BOX || item == Items.CYAN_SHULKER_BOX || item == Items.PURPLE_SHULKER_BOX || item == Items.BLUE_SHULKER_BOX || item == Items.BROWN_SHULKER_BOX || item == Items.GREEN_SHULKER_BOX || item == Items.RED_SHULKER_BOX || item == Items.BLACK_SHULKER_BOX;
+        return item instanceof BlockItem blockItem && blockItem.getBlock() instanceof ShulkerBoxBlock;
     }
 
     public static boolean isThrowable(Item item) {
         return item instanceof ExperienceBottleItem || item instanceof BowItem || item instanceof CrossbowItem || item instanceof SnowballItem || item instanceof EggItem || item instanceof EnderPearlItem || item instanceof SplashPotionItem || item instanceof LingeringPotionItem || item instanceof FishingRodItem || item instanceof TridentItem;
-    }
-
-    public static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(value, max));
-    }
-
-    public static float clamp(float value, float min, float max) {
-        return Math.max(min, Math.min(value, max));
-    }
-
-    public static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(value, max));
     }
 
     public static void addEnchantment(ItemStack itemStack, Enchantment enchantment, int level) {

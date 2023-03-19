@@ -13,6 +13,7 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.input.Input;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.option.Perspective;
+import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 public class FreeLook extends Module {
@@ -119,8 +120,8 @@ public class FreeLook extends Module {
             }
         }
 
-        mc.player.setPitch(Utils.clamp(mc.player.getPitch(), -90, 90));
-        cameraPitch = Utils.clamp(cameraPitch, -90, 90);
+        mc.player.setPitch(MathHelper.clamp(mc.player.getPitch(), -90, 90));
+        cameraPitch = MathHelper.clamp(cameraPitch, -90, 90);
     }
 
     public enum Mode {

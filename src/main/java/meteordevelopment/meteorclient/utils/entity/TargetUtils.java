@@ -17,6 +17,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -49,7 +50,7 @@ public class TargetUtils {
             if (fp != null && isGood.test(fp)) targetList.add(fp);
         });
 
-        targetList.sort((e1, e2) -> sort(e1, e2, sortPriority));
+        targetList.sort(getSort(sortPriority));
         if (targetList.size() > maxCount) for (int i = targetList.size() - 1; i >= maxCount; --i) targetList.remove(maxCount);
     }
 
@@ -69,13 +70,13 @@ public class TargetUtils {
         return !PlayerUtils.isWithin(target, range) || !target.isAlive() || target.isDead() || target.getHealth() <= 0;
     }
 
-    private static int sort(Entity e1, Entity e2, SortPriority priority) {
+    private static Comparator<Entity> getSort(SortPriority priority) {
         return switch (priority) {
-            case LowestDistance -> Double.compare(PlayerUtils.squaredDistanceTo(e1), PlayerUtils.squaredDistanceTo(e2));
-            case HighestDistance -> Double.compare(PlayerUtils.squaredDistanceTo(e2), PlayerUtils.squaredDistanceTo(e1));
-            case LowestHealth -> sortHealth(e1, e2);
-            case HighestHealth -> sortHealth(e2, e1);
-            case ClosestAngle -> sortAngle(e1, e2);
+            case LowestDistance -> (e1, e2) -> Double.compare(PlayerUtils.squaredDistanceTo(e1), PlayerUtils.squaredDistanceTo(e2));
+            case HighestDistance -> (e1, e2) -> Double.compare(PlayerUtils.squaredDistanceTo(e2), PlayerUtils.squaredDistanceTo(e1));
+            case LowestHealth -> TargetUtils::sortHealth;
+            case HighestHealth -> (e1, e2) -> sortHealth(e2, e1);
+            case ClosestAngle -> TargetUtils::sortAngle;
         };
     }
 

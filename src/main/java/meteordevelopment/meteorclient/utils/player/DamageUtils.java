@@ -22,6 +22,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
@@ -110,9 +111,9 @@ public class DamageUtils {
             }
         }
 
-        if (entity.getActiveStatusEffects().containsKey(StatusEffects.STRENGTH)) {
-            int strength = Objects.requireNonNull(entity.getStatusEffect(StatusEffects.STRENGTH)).getAmplifier() + 1;
-            damage += 3 * strength;
+        StatusEffectInstance strength = entity.getStatusEffect(StatusEffects.STRENGTH);
+        if (strength != null) {
+            damage += 3 * (strength.getAmplifier() + 1);
         }
 
         // Reduce by resistance
@@ -159,9 +160,10 @@ public class DamageUtils {
     // Anchor damage
 
     public static double anchorDamage(LivingEntity player, Vec3d anchor) {
-        mc.world.removeBlock(new BlockPos(anchor), false);
+        BlockPos anchorPos = new BlockPos(anchor);
+        mc.world.removeBlock(anchorPos, false);
         double damage = bedDamage(player, anchor);
-        mc.world.setBlockState(new BlockPos(anchor), Blocks.RESPAWN_ANCHOR.getDefaultState());
+        mc.world.setBlockState(anchorPos, Blocks.RESPAWN_ANCHOR.getDefaultState());
         return damage;
     }
 
@@ -197,9 +199,9 @@ public class DamageUtils {
     private static double resistanceReduction(LivingEntity player, double damage) {
         if (damage < 0) return 0;
 
-        if (player.hasStatusEffect(StatusEffects.RESISTANCE)) {
-            int lvl = (player.getStatusEffect(StatusEffects.RESISTANCE).getAmplifier() + 1);
-            return damage * (1 - (lvl * 0.2));
+        StatusEffectInstance resistance = player.getStatusEffect(StatusEffects.RESISTANCE);
+        if (resistance != null) {
+            damage *= 1 - (resistance.getAmplifier() + 1) * 0.2;
         }
 
         return damage;

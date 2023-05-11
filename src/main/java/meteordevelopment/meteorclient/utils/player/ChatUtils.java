@@ -68,7 +68,7 @@ public class ChatUtils {
     public static void sendPlayerMsg(String message) {
         mc.inGameHud.getChatHud().addToMessageHistory(message);
 
-        if (message.startsWith("/")) mc.player.networkHandler.sendCommand(message.substring(1));
+        if (message.startsWith("/")) mc.player.networkHandler.sendChatCommand(message.substring(1));
         else mc.player.networkHandler.sendChatMessage(message);
     }
 
@@ -78,7 +78,7 @@ public class ChatUtils {
         sendMsg(Formatting.GRAY, message, args);
     }
 
-    public static void info(String prefix, String message, Object... args) {
+    public static void infoPrefix(String prefix, String message, Object... args) {
         sendMsg(0, prefix, Formatting.LIGHT_PURPLE, Formatting.GRAY, message, args);
     }
 
@@ -88,7 +88,7 @@ public class ChatUtils {
         sendMsg(Formatting.YELLOW, message, args);
     }
 
-    public static void warning(String prefix, String message, Object... args) {
+    public static void warningPrefix(String prefix, String message, Object... args) {
         sendMsg(0, prefix, Formatting.LIGHT_PURPLE, Formatting.YELLOW, message, args);
     }
 
@@ -98,7 +98,7 @@ public class ChatUtils {
         sendMsg(Formatting.RED, message, args);
     }
 
-    public static void error(String prefix, String message, Object... args) {
+    public static void errorPrefix(String prefix, String message, Object... args) {
         sendMsg(0, prefix, Formatting.LIGHT_PURPLE, Formatting.RED, message, args);
     }
 

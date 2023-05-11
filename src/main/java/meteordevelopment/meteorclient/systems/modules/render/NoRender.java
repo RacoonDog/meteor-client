@@ -27,13 +27,6 @@ public class NoRender extends Module {
 
     // Overlay
 
-    private final Setting<Boolean> noHurtCam = sgOverlay.add(new BoolSetting.Builder()
-        .name("hurt-cam")
-        .description("Disables rendering of the hurt camera effect.")
-        .defaultValue(false)
-        .build()
-    );
-
     private final Setting<Boolean> noPortalOverlay = sgOverlay.add(new BoolSetting.Builder()
         .name("portal-overlay")
         .description("Disables rendering of the nether portal overlay.")
@@ -114,6 +107,13 @@ public class NoRender extends Module {
     private final Setting<Boolean> noEatParticles = sgOverlay.add(new BoolSetting.Builder()
         .name("eating-particles")
         .description("Disables rendering of eating particles.")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Boolean> noEnchantGlint = sgOverlay.add(new BoolSetting.Builder()
+        .name("enchantment-glint")
+        .description("Disables rending of the enchantment glint.")
         .defaultValue(false)
         .build()
     );
@@ -252,6 +252,7 @@ public class NoRender extends Module {
         .name("cave-culling")
         .description("Disables Minecraft's cave culling algorithm.")
         .defaultValue(false)
+        .onChanged(b -> mc.worldRenderer.reload())
         .build()
     );
 
@@ -350,11 +351,17 @@ public class NoRender extends Module {
         super(Categories.Render, "no-render", "Disables certain animations or overlays from rendering.");
     }
 
-    // Overlay
-
-    public boolean noHurtCam() {
-        return isActive() && noHurtCam.get();
+    @Override
+    public void onActivate() {
+        if (noCaveCulling.get()) mc.worldRenderer.reload();
     }
+
+    @Override
+    public void onDeactivate() {
+        if (noCaveCulling.get()) mc.worldRenderer.reload();
+    }
+
+    // Overlay
 
     public boolean noPortalOverlay() {
         return isActive() && noPortalOverlay.get();
@@ -402,6 +409,10 @@ public class NoRender extends Module {
 
     public boolean noEatParticles() {
         return isActive() && noEatParticles.get();
+    }
+
+    public boolean noEnchantGlint() {
+        return isActive() && noEnchantGlint.get();
     }
 
     // HUD

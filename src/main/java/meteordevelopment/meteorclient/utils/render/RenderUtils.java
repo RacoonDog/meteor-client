@@ -5,7 +5,6 @@
 
 package meteordevelopment.meteorclient.utils.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
@@ -32,6 +31,8 @@ import java.util.List;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class RenderUtils {
+    private static final MatrixStack MATRICES = new MatrixStack();
+
     public static Vec3d center;
 
     private static final Pool<RenderBlock> renderBlockPool = new Pool<>(RenderBlock::new);
@@ -43,19 +44,18 @@ public class RenderUtils {
     }
 
     // Items
-    public static void drawItem(ItemStack itemStack, int x, int y, double scale, boolean overlay) {
-        //RenderSystem.disableDepthTest();
+    public static void drawItem(ItemStack itemStack, int x, int y, float scale, boolean overlay) {
+        MATRICES.push();
+        MATRICES.scale(scale, scale, 1f);
+        MATRICES.translate(0, 0, 401); // Thanks Mojang
 
-        MatrixStack matrices = RenderSystem.getModelViewStack();
+        int scaledX = (int) (x / scale);
+        int scaledY = (int) (y / scale);
 
-        matrices.push();
-        matrices.scale((float) scale, (float) scale, 1);
+        mc.getItemRenderer().renderInGuiWithOverrides(MATRICES, itemStack, scaledX, scaledY);
+        if (overlay) mc.getItemRenderer().renderGuiItemOverlay(MATRICES, mc.textRenderer, itemStack, scaledX, scaledY, null);
 
-        mc.getItemRenderer().renderGuiItemIcon(itemStack, (int) (x / scale), (int) (y / scale));
-        if (overlay) mc.getItemRenderer().renderGuiItemOverlay(mc.textRenderer, itemStack, (int) (x / scale), (int) (y / scale), null);
-
-        matrices.pop();
-        //RenderSystem.enableDepthTest();
+        MATRICES.pop();
     }
 
     public static void drawItem(ItemStack itemStack, int x, int y, boolean overlay) {

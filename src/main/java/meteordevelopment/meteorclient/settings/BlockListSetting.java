@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class BlockListSetting extends Setting<List<Block>> {
+public class BlockListSetting extends AbstractSetting<List<Block>> {
     public final Predicate<Block> filter;
 
     public BlockListSetting(String name, String description, List<Block> defaultValue, Consumer<List<Block>> onChanged, Consumer<Setting<List<Block>>> onModuleActivated, Predicate<Block> filter, IVisible visible) {

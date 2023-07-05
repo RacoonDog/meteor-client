@@ -17,7 +17,7 @@ import net.minecraft.nbt.NbtCompound;
 
 import java.util.function.Consumer;
 
-public class KeybindSetting extends Setting<Keybind> {
+public class KeybindSetting extends AbstractSetting<Keybind> {
     private final Runnable action;
     public WKeybind widget;
 

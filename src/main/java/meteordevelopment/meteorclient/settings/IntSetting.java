@@ -13,15 +13,43 @@ public class IntSetting extends Setting<Integer> {
     public final int min, max;
     public final int sliderMin, sliderMax;
     public final boolean noSlider;
+    private final int defaultValue;
+    private int value;
 
     private IntSetting(String name, String description, int defaultValue, Consumer<Integer> onChanged, Consumer<Setting<Integer>> onModuleActivated, IVisible visible, int min, int max, int sliderMin, int sliderMax, boolean noSlider) {
-        super(name, description, defaultValue, onChanged, onModuleActivated, visible);
+        super(name, description, onChanged, onModuleActivated, visible);
 
         this.min = min;
         this.max = max;
         this.sliderMin = sliderMin;
         this.sliderMax = sliderMax;
         this.noSlider = noSlider;
+        this.defaultValue = defaultValue;
+    }
+
+    @Override
+    protected void setImpl(Integer value) {
+        this.value = value;
+    }
+
+    public int getDefaultValueInt() {
+        return defaultValue;
+    }
+
+    public int getInt() {
+        return value;
+    }
+
+    @Deprecated
+    @Override
+    public Integer getDefaultValue() {
+        return defaultValue;
+    }
+
+    @Deprecated
+    @Override
+    public Integer get() {
+        return value;
     }
 
     @Override

@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class ItemListSetting extends Setting<List<Item>> {
+public class ItemListSetting extends AbstractSetting<List<Item>> {
     public final Predicate<Item> filter;
     private final boolean bypassFilterWhenSavingAndLoading;
 

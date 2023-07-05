@@ -13,9 +13,38 @@ import java.util.function.Consumer;
 
 public class BoolSetting extends Setting<Boolean> {
     private static final List<String> SUGGESTIONS = ImmutableList.of("true", "false", "toggle");
+    private final boolean defaultValue;
+    private boolean value;
 
     private BoolSetting(String name, String description, Boolean defaultValue, Consumer<Boolean> onChanged, Consumer<Setting<Boolean>> onModuleActivated, IVisible visible) {
-        super(name, description, defaultValue, onChanged, onModuleActivated, visible);
+        super(name, description, onChanged, onModuleActivated, visible);
+
+        this.defaultValue = defaultValue;
+    }
+
+    @Override
+    protected void setImpl(Boolean value) {
+        this.value = value;
+    }
+
+    public boolean getDefaultValueBool() {
+        return defaultValue;
+    }
+
+    public boolean getBool() {
+        return value;
+    }
+
+    @Deprecated
+    @Override
+    public Boolean getDefaultValue() {
+        return defaultValue;
+    }
+
+    @Deprecated
+    @Override
+    public Boolean get() {
+        return value;
     }
 
     @Override

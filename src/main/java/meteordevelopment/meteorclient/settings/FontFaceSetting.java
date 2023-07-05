@@ -14,7 +14,7 @@ import net.minecraft.nbt.NbtCompound;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class FontFaceSetting extends Setting<FontFace> {
+public class FontFaceSetting extends AbstractSetting<FontFace> {
     public FontFaceSetting(String name, String description, FontFace defaultValue, Consumer<FontFace> onChanged, Consumer<Setting<FontFace>> onModuleActivated, IVisible visible) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
     }

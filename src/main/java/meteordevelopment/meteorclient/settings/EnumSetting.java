@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class EnumSetting<T extends Enum<?>> extends Setting<T> {
+public class EnumSetting<T extends Enum<?>> extends AbstractSetting<T> {
     private T[] values;
 
     private final List<String> suggestions;

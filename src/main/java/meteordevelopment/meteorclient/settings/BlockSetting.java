@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class BlockSetting extends Setting<Block> {
+public class BlockSetting extends AbstractSetting<Block> {
     public final Predicate<Block> filter;
 
     public BlockSetting(String name, String description, Block defaultValue, Consumer<Block> onChanged, Consumer<Setting<Block>> onModuleActivated, IVisible visible, Predicate<Block> filter) {

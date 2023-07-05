@@ -11,7 +11,7 @@ import net.minecraft.nbt.NbtCompound;
 
 import java.util.function.Consumer;
 
-public class StringSetting extends Setting<String> {
+public class StringSetting extends AbstractSetting<String> {
     public final Class<? extends WTextBox.Renderer> renderer;
     public final CharFilter filter;
     public final boolean wide;

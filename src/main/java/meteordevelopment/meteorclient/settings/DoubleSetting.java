@@ -15,9 +15,11 @@ public class DoubleSetting extends Setting<Double> {
     public final boolean onSliderRelease;
     public final int decimalPlaces;
     public final boolean noSlider;
+    private final double defaultValue;
+    private double value;
 
     private DoubleSetting(String name, String description, double defaultValue, Consumer<Double> onChanged, Consumer<Setting<Double>> onModuleActivated, IVisible visible, double min, double max, double sliderMin, double sliderMax, boolean onSliderRelease, int decimalPlaces, boolean noSlider) {
-        super(name, description, defaultValue, onChanged, onModuleActivated, visible);
+        super(name, description, onChanged, onModuleActivated, visible);
 
         this.min = min;
         this.max = max;
@@ -26,6 +28,32 @@ public class DoubleSetting extends Setting<Double> {
         this.decimalPlaces = decimalPlaces;
         this.onSliderRelease = onSliderRelease;
         this.noSlider = noSlider;
+        this.defaultValue = defaultValue;
+    }
+
+    @Override
+    protected void setImpl(Double value) {
+        this.value = value;
+    }
+
+    public double getDefaultValueDouble() {
+        return defaultValue;
+    }
+
+    public double getDouble() {
+        return value;
+    }
+
+    @Deprecated
+    @Override
+    public Double getDefaultValue() {
+        return defaultValue;
+    }
+
+    @Deprecated
+    @Override
+    public Double get() {
+        return value;
     }
 
     @Override

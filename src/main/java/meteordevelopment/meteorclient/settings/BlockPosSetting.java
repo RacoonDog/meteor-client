@@ -11,7 +11,7 @@ import net.minecraft.util.math.BlockPos;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class BlockPosSetting extends Setting<BlockPos> {
+public class BlockPosSetting extends AbstractSetting<BlockPos> {
     public BlockPosSetting(String name, String description, BlockPos defaultValue, Consumer<BlockPos> onChanged, Consumer<Setting<BlockPos>> onModuleActivated, IVisible visible) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
     }

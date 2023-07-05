@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,20 +25,16 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public final String name, title, description;
     private final IVisible visible;
 
-    protected final T defaultValue;
-    protected T value;
-
     public final Consumer<Setting<T>> onModuleActivated;
     private final Consumer<T> onChanged;
 
     public Module module;
     public boolean lastWasVisible;
 
-    public Setting(String name, String description, T defaultValue, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
+    public Setting(String name, String description, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
         this.name = name;
         this.title = Utils.nameToTitle(name);
         this.description = description;
-        this.defaultValue = defaultValue;
         this.onChanged = onChanged;
         this.onModuleActivated = onModuleActivated;
         this.visible = visible;
@@ -45,20 +42,17 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         resetImpl();
     }
 
-    @Override
-    public T get() {
-        return value;
-    }
-
     public boolean set(T value) {
         if (!isValueValid(value)) return false;
-        this.value = value;
+        setImpl(value);
         onChanged();
         return true;
     }
 
+    abstract protected void setImpl(T value);
+
     protected void resetImpl() {
-        value = defaultValue;
+        setImpl(getDefaultValue());
     }
 
     public void reset() {
@@ -66,29 +60,24 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         onChanged();
     }
 
-    public T getDefaultValue() {
-        return defaultValue;
-    }
+    abstract public T getDefaultValue();
 
     public boolean parse(String str) {
         T newValue = parseImpl(str);
 
         if (newValue != null) {
-            if (isValueValid(newValue)) {
-                value = newValue;
-                onChanged();
-            }
+            set(newValue);
         }
 
         return newValue != null;
     }
 
     public boolean wasChanged() {
-        return !Objects.equals(value, defaultValue);
+        return !Objects.equals(get(), getDefaultValue());
     }
 
     public void onChanged() {
-        if (onChanged != null) onChanged.accept(value);
+        if (onChanged != null) onChanged.accept(get());
     }
 
     public void onActivated() {
@@ -135,7 +124,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
     @Override
     public String toString() {
-        return value.toString();
+        return get().toString();
     }
 
     @Override

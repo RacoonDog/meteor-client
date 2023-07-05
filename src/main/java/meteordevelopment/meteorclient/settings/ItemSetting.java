@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class ItemSetting extends Setting<Item> {
+public class ItemSetting extends AbstractSetting<Item> {
     public final Predicate<Item> filter;
 
     public ItemSetting(String name, String description, Item defaultValue, Consumer<Item> onChanged, Consumer<Setting<Item>> onModuleActivated, IVisible visible, Predicate<Item> filter) {

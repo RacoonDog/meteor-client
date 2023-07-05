@@ -10,7 +10,7 @@ import org.joml.Vector3d;
 
 import java.util.function.Consumer;
 
-public class Vector3dSetting extends Setting<Vector3d> {
+public class Vector3dSetting extends AbstractSetting<Vector3d> {
     public final double min, max;
     public final double sliderMin, sliderMax;
     public final boolean onSliderRelease;

@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
+public class EntityTypeListSetting extends AbstractSetting<Set<EntityType<?>>> {
     public final Predicate<EntityType<?>> filter;
 
     public EntityTypeListSetting(String name, String description, Set<EntityType<?>> defaultValue, Consumer<Set<EntityType<?>>> onChanged, Consumer<Setting<Set<EntityType<?>>>> onModuleActivated, IVisible visible, Predicate<EntityType<?>> filter) {

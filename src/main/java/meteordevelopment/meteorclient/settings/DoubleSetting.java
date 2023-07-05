@@ -29,6 +29,8 @@ public class DoubleSetting extends Setting<Double> {
         this.onSliderRelease = onSliderRelease;
         this.noSlider = noSlider;
         this.defaultValue = defaultValue;
+
+        resetImpl();
     }
 
     @Override

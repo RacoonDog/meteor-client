@@ -20,6 +20,8 @@ public class BoolSetting extends Setting<Boolean> {
         super(name, description, onChanged, onModuleActivated, visible);
 
         this.defaultValue = defaultValue;
+
+        resetImpl();
     }
 
     @Override

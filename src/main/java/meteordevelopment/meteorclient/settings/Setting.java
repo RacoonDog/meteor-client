@@ -38,8 +38,6 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         this.onChanged = onChanged;
         this.onModuleActivated = onModuleActivated;
         this.visible = visible;
-
-        resetImpl();
     }
 
     public boolean set(T value) {

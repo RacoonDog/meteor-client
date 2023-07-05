@@ -15,6 +15,8 @@ public abstract class AbstractSetting<T> extends Setting<T> {
         super(name, description, onChanged, onModuleActivated, visible);
 
         this.defaultValue = defaultValue;
+
+        resetImpl();
     }
 
     @Override

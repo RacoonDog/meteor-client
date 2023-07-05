@@ -25,6 +25,8 @@ public class IntSetting extends Setting<Integer> {
         this.sliderMax = sliderMax;
         this.noSlider = noSlider;
         this.defaultValue = defaultValue;
+
+        resetImpl();
     }
 
     @Override

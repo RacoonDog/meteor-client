@@ -140,15 +140,15 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         return Objects.hash(name);
     }
 
+    @Nullable
     public static <T> T parseId(Registry<T> registry, String name) {
         name = name.trim();
 
         Identifier id;
         if (name.contains(":")) id = new Identifier(name);
         else id = new Identifier("minecraft", name);
-        if (registry.containsId(id)) return registry.get(id);
 
-        return null;
+        return registry.get(id);
     }
 
     public abstract static class SettingBuilder<B, V, S> {

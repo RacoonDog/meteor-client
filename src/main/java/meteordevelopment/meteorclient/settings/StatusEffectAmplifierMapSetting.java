@@ -52,9 +52,9 @@ public class StatusEffectAmplifierMapSetting extends AbstractSetting<Object2IntM
     @Override
     public NbtCompound save(NbtCompound tag) {
         NbtCompound valueTag = new NbtCompound();
-        for (StatusEffect statusEffect : get().keySet()) {
-            Identifier id = Registries.STATUS_EFFECT.getId(statusEffect);
-            if (id != null) valueTag.putInt(id.toString(), get().getInt(statusEffect));
+        for (var entry : get().object2IntEntrySet()) {
+            Identifier id = Registries.STATUS_EFFECT.getId(entry.getKey());
+            if (id != null) valueTag.putInt(id.toString(), entry.getIntValue());
         }
         tag.put("value", valueTag);
 

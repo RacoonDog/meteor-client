@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.utils.misc;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.utils.PreInit;
@@ -20,7 +21,7 @@ import net.minecraft.particle.ParticleType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.StringHelper;
-import org.apache.commons.lang3.text.WordUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,9 @@ public class Names {
     private static final Map<EntityType<?>, String> entityTypeNames = new HashMap<>(64);
     private static final Map<ParticleType<?>, String> particleTypesNames = new HashMap<>(64);
     private static final Map<Identifier, String> soundNames = new HashMap<>(64);
+    private static final ObjectOpenHashSet<String> settingNames = new ObjectOpenHashSet<>(1024, 0.9990233f);
+    private static final ObjectOpenHashSet<String> settingTitles = new ObjectOpenHashSet<>(1024, 0.9990233f);
+    private static final ObjectOpenHashSet<String> settingDescriptions = new ObjectOpenHashSet<>(1500);
 
     @PreInit
     public static void init() {
@@ -74,7 +78,7 @@ public class Names {
 
     public static String get(ParticleType<?> type) {
         if (!(type instanceof ParticleEffect)) return "";
-        return particleTypesNames.computeIfAbsent(type, effect1 -> WordUtils.capitalize(((ParticleEffect) effect1).asString().substring(10).replace("_", " ")));
+        return particleTypesNames.computeIfAbsent(type, effect1 -> StringUtils.capitalize(((ParticleEffect) effect1).asString().substring(10).replace("_", " ")));
     }
 
     public static String getSoundName(Identifier id) {
@@ -87,5 +91,17 @@ public class Names {
 
             return StringHelper.stripTextFormat(text.getString());
         });
+    }
+
+    public static String getSettingName(String name) {
+        return settingNames.addOrGet(name);
+    }
+
+    public static String getSettingTitle(String title) {
+        return settingTitles.addOrGet(title);
+    }
+
+    public static String getSettingDesc(String desc) {
+        return settingDescriptions.addOrGet(desc);
     }
 }

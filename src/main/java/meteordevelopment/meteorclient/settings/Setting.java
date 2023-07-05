@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.IGetter;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
+import meteordevelopment.meteorclient.utils.misc.Names;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -32,9 +33,9 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public boolean lastWasVisible;
 
     public Setting(String name, String description, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
-        this.name = name;
-        this.title = Utils.nameToTitle(name);
-        this.description = description;
+        this.name = Names.getSettingName(name);
+        this.title = Names.getSettingTitle(Utils.nameToTitle(name));
+        this.description = Names.getSettingDesc(description);
         this.onChanged = onChanged;
         this.onModuleActivated = onModuleActivated;
         this.visible = visible;

@@ -6,6 +6,7 @@
 package meteordevelopment.meteorclient.settings;
 
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
+import meteordevelopment.meteorclient.utils.misc.Names;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -21,7 +22,7 @@ public class SettingGroup implements ISerializable<SettingGroup>, Iterable<Setti
     final List<Setting<?>> settings = new ArrayList<>(1);
 
     SettingGroup(String name, boolean sectionExpanded) {
-        this.name = name;
+        this.name = Names.getSettingTitle(name);
         this.sectionExpanded = sectionExpanded;
     }
 

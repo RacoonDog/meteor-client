@@ -21,8 +21,17 @@ public class ColorListSetting extends AbstractSetting<List<SettingColor>> {
 
     @Override
     protected List<SettingColor> parseImpl(String str) {
-        // TODO: I cba to write a text parser for this
-        return new ArrayList<>();
+        try {
+            String[] colors = str.split(",");
+            List<SettingColor> list = new ArrayList<>(colors.length);
+            for (var colorStr : colors) {
+                String[] strs = colorStr.split(" ");
+                list.add(new SettingColor(Integer.parseInt(strs[0]), Integer.parseInt(strs[1]), Integer.parseInt(strs[2]), Integer.parseInt(strs[3])));
+            }
+            return list;
+        } catch (IndexOutOfBoundsException | NumberFormatException ignored) {
+            return new ArrayList<>();
+        }
     }
 
     @Override

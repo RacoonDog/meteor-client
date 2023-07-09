@@ -51,6 +51,10 @@ public abstract class Account<T extends Account<?>> implements ISerializable<T> 
         return cache.username;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public AccountType getType() {
         return type;
     }

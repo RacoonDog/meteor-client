@@ -9,5 +9,6 @@ public enum AccountType {
     Cracked,
     Microsoft,
     TheAltening,
-    EasyMC
+    EasyMC,
+    AccessToken
 }

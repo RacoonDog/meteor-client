@@ -39,6 +39,7 @@ public class AccountsScreen extends WindowScreen {
         addButton(l, "Altening", () -> mc.setScreen(new AddAlteningAccountScreen(theme, this)));
         addButton(l, "EasyMC", () -> mc.setScreen(new AddEasyMCAccountScreen(theme, this)));
         addButton(l, "Microsoft", () -> mc.setScreen(new AddMicrosoftAccountScreen(theme, this)));
+        addButton(l, "Access Token", () -> mc.setScreen(new AddAccessTokenAccountScreen(theme, this)));
     }
 
     private void addButton(WContainer c, String text, Runnable action) {

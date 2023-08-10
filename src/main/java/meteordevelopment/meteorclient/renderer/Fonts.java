@@ -13,7 +13,6 @@ import meteordevelopment.meteorclient.renderer.text.FontFace;
 import meteordevelopment.meteorclient.renderer.text.FontFamily;
 import meteordevelopment.meteorclient.renderer.text.FontInfo;
 import meteordevelopment.meteorclient.systems.config.Config;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.render.FontUtils;
 
 import java.io.File;
@@ -32,7 +31,6 @@ public class Fonts {
     public static final List<FontFamily> FONT_FAMILIES = new ArrayList<>();
     public static CustomTextRenderer RENDERER;
 
-    @PreInit(dependencies = Shaders.class)
     public static void refresh() {
         FONT_FAMILIES.clear();
 

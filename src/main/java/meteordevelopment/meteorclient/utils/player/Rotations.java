@@ -9,7 +9,6 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.entity.player.SendMovementPacketsEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.systems.config.Config;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.entity.Target;
 import meteordevelopment.meteorclient.utils.misc.Pool;
 import meteordevelopment.orbit.EventHandler;
@@ -38,7 +37,6 @@ public class Rotations {
     private static boolean sentLastRotation;
     public static boolean rotating = false;
 
-    @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(Rotations.class);
     }

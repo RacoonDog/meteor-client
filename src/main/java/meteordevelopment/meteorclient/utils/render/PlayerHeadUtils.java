@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.mojang.util.UUIDTypeAdapter;
 import meteordevelopment.meteorclient.systems.accounts.TexturesJson;
 import meteordevelopment.meteorclient.systems.accounts.UuidToProfileResponse;
-import meteordevelopment.meteorclient.utils.PostInit;
 import meteordevelopment.meteorclient.utils.network.Http;
 
 import java.util.Base64;
@@ -13,7 +12,6 @@ import java.util.UUID;
 public class PlayerHeadUtils {
     public static PlayerHeadTexture STEVE_HEAD;
 
-    @PostInit
     public static void init() {
         STEVE_HEAD = new PlayerHeadTexture();
     }

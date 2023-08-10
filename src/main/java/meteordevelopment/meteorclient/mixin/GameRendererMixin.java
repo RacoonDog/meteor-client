@@ -52,8 +52,18 @@ public abstract class GameRendererMixin {
     @Shadow @Final private Camera camera;
     @Unique private Renderer3D renderer;
 
-    @Inject(method = "renderWorld", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = { "ldc=hand" }), locals = LocalCapture.CAPTURE_FAILEXCEPTION)
-    private void onRenderWorld(float tickDelta, long limitTime, MatrixStack matrices, CallbackInfo info, boolean bl, Camera camera, MatrixStack matrixStack, double d, float f, float g, Matrix4f matrix4f, Matrix3f matrix3f) {
+    //@Unique private MatrixStack matrices;
+    @Unique private Matrix4f matrix4f;
+
+    @Redirect(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/math/MatrixStack;peek()Lnet/minecraft/client/util/math/MatrixStack$Entry;"))
+    private MatrixStack.Entry captureLocals(MatrixStack instance) {
+        MatrixStack.Entry entry = instance.peek();
+        matrix4f = entry.getPositionMatrix();
+        return entry;
+    }
+
+    @Inject(method = "renderWorld", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = { "ldc=hand" }))
+    private void onRenderWorld(float tickDelta, long limitTime, MatrixStack matrices, CallbackInfo info) {
         if (!Utils.canUpdate()) return;
 
         client.getProfiler().push(MeteorClient.MOD_ID + "_render");
@@ -172,11 +182,5 @@ public abstract class GameRendererMixin {
     @ModifyConstant(method = "updateTargetedEntity", constant = @Constant(doubleValue = 3))
     private double updateTargetedEntityModifySurvivalReach(double d) {
         return Modules.get().get(Reach.class).entityReach();
-    }
-
-    @ModifyConstant(method = "updateTargetedEntity", constant = @Constant(doubleValue = 9))
-    private double updateTargetedEntityModifySquaredMaxReach(double d) {
-        Reach reach = Modules.get().get(Reach.class);
-        return reach.entityReach() * reach.entityReach();
     }
 }

@@ -7,26 +7,43 @@ package meteordevelopment.meteorclient;
 
 import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
+import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.events.game.OpenScreenEvent;
 import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.meteor.MouseButtonEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
+import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
+import meteordevelopment.meteorclient.renderer.*;
 import meteordevelopment.meteorclient.systems.Systems;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.misc.DiscordPresence;
-import meteordevelopment.meteorclient.utils.PostInit;
-import meteordevelopment.meteorclient.utils.PreInit;
-import meteordevelopment.meteorclient.utils.ReflectInit;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.misc.FakeClientPlayer;
+import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
+import meteordevelopment.meteorclient.utils.misc.Names;
 import meteordevelopment.meteorclient.utils.misc.Version;
 import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
 import meteordevelopment.meteorclient.utils.misc.input.KeyBinds;
+import meteordevelopment.meteorclient.utils.network.Capes;
+import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import meteordevelopment.meteorclient.utils.network.OnlinePlayers;
+import meteordevelopment.meteorclient.utils.player.ChatUtils;
+import meteordevelopment.meteorclient.utils.player.DamageUtils;
+import meteordevelopment.meteorclient.utils.player.EChestMemory;
+import meteordevelopment.meteorclient.utils.player.Rotations;
+import meteordevelopment.meteorclient.utils.render.PlayerHeadUtils;
+import meteordevelopment.meteorclient.utils.render.RenderUtils;
+import meteordevelopment.meteorclient.utils.render.color.RainbowColors;
+import meteordevelopment.meteorclient.utils.render.postprocess.ChamsShader;
+import meteordevelopment.meteorclient.utils.render.postprocess.PostProcessShaders;
+import meteordevelopment.meteorclient.utils.world.BlockIterator;
+import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventBus;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
@@ -105,11 +122,8 @@ public class MeteorClient implements ClientModInitializer {
             }
         });
 
-        // Register init classes
-        ReflectInit.registerPackages();
-
         // Pre init
-        ReflectInit.init(PreInit.class);
+        preInit();
 
         // Register module categories
         Categories.init();
@@ -130,7 +144,7 @@ public class MeteorClient implements ClientModInitializer {
         Systems.load();
 
         // Post init
-        ReflectInit.init(PostInit.class);
+        postInit();
 
         // Save on shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -138,6 +152,39 @@ public class MeteorClient implements ClientModInitializer {
             Systems.save();
             GuiThemes.save();
         }));
+    }
+
+    private void preInit() {
+        MeteorExecutor.init();
+        GuiThemes.init();
+        Tabs.init();
+        Shaders.init();
+        Fonts.refresh();
+        GL.init();
+        PostProcessRenderer.init();
+        Renderer2D.init();
+        FakeClientPlayer.init();
+        MeteorStarscript.init();
+        Names.init();
+        Capes.init();
+        DamageUtils.init();
+        EChestMemory.init();
+        Rotations.init();
+        PostProcessShaders.init();
+        Utils.init();
+        BlockIterator.init();
+        BlockUtils.init();
+    }
+
+    private void postInit() {
+        Commands.init();
+        GuiThemes.postInit();
+        GuiRenderer.init();
+        ChatUtils.init();
+        RainbowColors.init();
+        PlayerHeadUtils.init();
+        ChamsShader.load();
+        RenderUtils.init();
     }
 
     @EventHandler

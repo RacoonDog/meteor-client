@@ -7,7 +7,6 @@ package meteordevelopment.meteorclient.utils.world;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.Pool;
 import meteordevelopment.orbit.EventHandler;
@@ -33,7 +32,6 @@ public class BlockIterator {
 
     private static boolean disableCurrent;
 
-    @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(BlockIterator.class);
     }

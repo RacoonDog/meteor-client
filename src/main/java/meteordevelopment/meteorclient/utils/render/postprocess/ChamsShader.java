@@ -11,7 +11,6 @@ import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.renderer.Texture;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.Chams;
-import meteordevelopment.meteorclient.utils.PostInit;
 import meteordevelopment.meteorclient.utils.misc.MeteorIdentifier;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
@@ -36,7 +35,6 @@ public class ChamsShader extends EntityShader {
         MeteorClient.EVENT_BUS.subscribe(ChamsShader.class);
     }
 
-    @PostInit
     public static void load() {
         try {
             ByteBuffer data = null;

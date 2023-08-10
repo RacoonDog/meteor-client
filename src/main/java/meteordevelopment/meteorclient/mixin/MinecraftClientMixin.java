@@ -60,7 +60,6 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
 
     @Shadow protected abstract void doItemUse();
     @Shadow public abstract Profiler getProfiler();
-    @Shadow public abstract boolean isWindowFocused();
 
     @Shadow
     @Nullable
@@ -68,7 +67,11 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void onInit(CallbackInfo info) {
-        MeteorClient.INSTANCE.onInitializeClient();
+        try {
+            MeteorClient.INSTANCE.onInitializeClient();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
         firstFrame = true;
     }
 
@@ -124,29 +127,9 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
         return original.thenRun(() -> MeteorClient.EVENT_BUS.post(ResourcePacksReloadedEvent.get()));
     }
 
-    @ModifyArg(method = "updateWindowTitle", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/Window;setTitle(Ljava/lang/String;)V"))
-    private String setTitle(String original) {
-        if (Config.get() == null || !Config.get().customWindowTitle.get()) return original;
-
-        String customTitle = Config.get().customWindowTitleText.get();
-        Script script = MeteorStarscript.compile(customTitle);
-
-        if (script != null) {
-            String title = MeteorStarscript.run(script);
-            if (title != null) customTitle = title;
-        }
-
-        return customTitle;
-    }
-
     @Inject(method = "onResolutionChanged", at = @At("TAIL"))
     private void onResolutionChanged(CallbackInfo info) {
         MeteorClient.EVENT_BUS.post(WindowResizedEvent.get());
-    }
-
-    @Inject(method = "getFramerateLimit", at = @At("HEAD"), cancellable = true)
-    private void onGetFramerateLimit(CallbackInfoReturnable<Integer> info) {
-        if (Modules.get().isActive(UnfocusedCPU.class) && !isWindowFocused()) info.setReturnValue(Math.min(Modules.get().get(UnfocusedCPU.class).fps.get(), this.options.getMaxFps().getValue()));
     }
 
     // Time delta

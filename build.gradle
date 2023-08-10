@@ -49,7 +49,7 @@ dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modInclude fabricApi.module("fabric-resource-loader-v0", project.fapi_version)
+    modImplementation fabricApi.module("fabric-resource-loader-v0", project.fapi_version)
 
     // Compat fixes
     modCompileOnly fabricApi.module("fabric-renderer-indigo", project.fapi_version)
@@ -59,7 +59,7 @@ dependencies {
     //modCompileOnly("io.vram:canvas-fabric-mc119:1.0.+") { transitive = false } // TODO: 1.19.3
 
     // Baritone (https://github.com/MeteorDevelopment/baritone)
-    modInclude "baritone:fabric:${project.minecraft_version}-SNAPSHOT"
+    modImplementation "baritone:fabric:${project.minecraft_version}-SNAPSHOT"
 
     // Libraries
     library "meteordevelopment:orbit:${project.orbit_version}"

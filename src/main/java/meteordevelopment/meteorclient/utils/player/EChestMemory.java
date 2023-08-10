@@ -8,7 +8,6 @@ package meteordevelopment.meteorclient.utils.player;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.OpenScreenEvent;
 import meteordevelopment.meteorclient.events.world.BlockActivateEvent;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.EnderChestBlock;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
@@ -23,7 +22,6 @@ public class EChestMemory {
     public static final DefaultedList<ItemStack> ITEMS = DefaultedList.ofSize(27, ItemStack.EMPTY);
     private static int echestOpenedState;
 
-    @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(EChestMemory.class);
     }

@@ -15,7 +15,6 @@ import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoint;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
-import meteordevelopment.meteorclient.utils.PostInit;
 import meteordevelopment.meteorclient.utils.misc.UnorderedArrayList;
 import meteordevelopment.orbit.EventHandler;
 
@@ -32,7 +31,6 @@ public class RainbowColors {
 
     public static final RainbowColor GLOBAL = new RainbowColor();
 
-    @PostInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(RainbowColors.class);
     }

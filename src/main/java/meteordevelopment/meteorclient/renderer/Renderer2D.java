@@ -6,7 +6,6 @@
 package meteordevelopment.meteorclient.renderer;
 
 import meteordevelopment.meteorclient.gui.renderer.packer.TextureRegion;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -27,7 +26,6 @@ public class Renderer2D {
         lines = new ShaderMesh(Shaders.POS_COLOR, DrawMode.Lines, Mesh.Attrib.Vec2, Mesh.Attrib.Color);
     }
 
-    @PreInit(dependencies = Shaders.class)
     public static void init() {
         COLOR = new Renderer2D(false);
         TEXTURE = new Renderer2D(true);

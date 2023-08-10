@@ -8,7 +8,6 @@ package meteordevelopment.meteorclient.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import meteordevelopment.meteorclient.commands.commands.*;
-import meteordevelopment.meteorclient.utils.PostInit;
 import net.minecraft.client.network.ClientCommandSource;
 import net.minecraft.command.CommandSource;
 
@@ -23,7 +22,6 @@ public class Commands {
     public static final CommandSource COMMAND_SOURCE = new ClientCommandSource(null, mc);
     public static final List<Command> COMMANDS = new ArrayList<>();
 
-    @PostInit
     public static void init() {
         add(new VClipCommand());
         add(new HClipCommand());

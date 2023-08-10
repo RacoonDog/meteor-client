@@ -65,7 +65,6 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public class Utils {
     private static final Random random = new Random();
-    public static boolean firstTimeTitleScreen = true;
     public static boolean isReleasingTrident;
     public static final Color WHITE = new Color(255, 255, 255);
     public static boolean rendering3D = true;
@@ -75,7 +74,6 @@ public class Utils {
 
     public static final Pattern FILE_NAME_INVALID_CHARS_PATTERN = Pattern.compile("[\\s\\\\/:*?\"<>|]");
 
-    @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(Utils.class);
     }

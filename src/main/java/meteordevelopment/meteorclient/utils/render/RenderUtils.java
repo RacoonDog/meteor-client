@@ -9,7 +9,6 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
-import meteordevelopment.meteorclient.utils.PostInit;
 import meteordevelopment.meteorclient.utils.misc.Pool;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.orbit.EventHandler;
@@ -37,7 +36,6 @@ public class RenderUtils {
     private static final Pool<RenderBlock> renderBlockPool = new Pool<>(RenderBlock::new);
     private static final List<RenderBlock> renderBlocks = new ArrayList<>();
 
-    @PostInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(RenderUtils.class);
     }

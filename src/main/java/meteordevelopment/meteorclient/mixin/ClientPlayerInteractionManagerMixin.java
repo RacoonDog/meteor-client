@@ -11,11 +11,9 @@ import meteordevelopment.meteorclient.events.entity.player.*;
 import meteordevelopment.meteorclient.mixininterface.IClientPlayerInteractionManager;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.misc.InventoryTweaks;
-import meteordevelopment.meteorclient.systems.modules.player.BreakDelay;
 import meteordevelopment.meteorclient.systems.modules.player.Reach;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
-import net.minecraft.block.BlockState;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.entity.Entity;
@@ -29,7 +27,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -134,17 +131,6 @@ public abstract class ClientPlayerInteractionManagerMixin implements IClientPlay
     private void creativeBreakDelayChange2(ClientPlayerInteractionManager interactionManager, int value) {
         BlockBreakingCooldownEvent event = MeteorClient.EVENT_BUS.post(BlockBreakingCooldownEvent.get(value));
         blockBreakingCooldown = event.cooldown;
-    }
-
-    @Redirect(method = "method_41930", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/BlockState;calcBlockBreakingDelta(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;)F"))
-    private float deltaChange(BlockState blockState, PlayerEntity player, BlockView world, BlockPos pos) {
-        float delta = blockState.calcBlockBreakingDelta(player, world, pos);
-        if (Modules.get().get(BreakDelay.class).noInstaBreak.get() && delta >= 1) {
-            BlockBreakingCooldownEvent event = MeteorClient.EVENT_BUS.post(BlockBreakingCooldownEvent.get(blockBreakingCooldown));
-            blockBreakingCooldown = event.cooldown;
-            return 0;
-        }
-        return delta;
     }
 
     @Inject(method = "breakBlock", at = @At("HEAD"), cancellable = true)

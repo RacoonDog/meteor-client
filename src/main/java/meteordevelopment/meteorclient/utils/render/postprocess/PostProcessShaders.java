@@ -1,6 +1,5 @@
 package meteordevelopment.meteorclient.utils.render.postprocess;
 
-import meteordevelopment.meteorclient.utils.PreInit;
 import net.minecraft.client.render.VertexConsumerProvider;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -12,7 +11,6 @@ public class PostProcessShaders {
 
     public static boolean rendering;
 
-    @PreInit
     public static void init() {
         CHAMS = new ChamsShader();
         ENTITY_OUTLINE = new EntityOutlineShader();

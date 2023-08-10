@@ -11,8 +11,6 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import meteordevelopment.meteorclient.events.game.ItemStackTooltipEvent;
 import meteordevelopment.meteorclient.events.game.SectionVisibleEvent;
 import meteordevelopment.meteorclient.events.render.TooltipDataEvent;
-import meteordevelopment.meteorclient.mixin.EntityAccessor;
-import meteordevelopment.meteorclient.mixin.EntityBucketItemAccessor;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
@@ -25,9 +23,6 @@ import meteordevelopment.meteorclient.utils.tooltip.*;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.entity.BannerPattern;
 import net.minecraft.block.entity.BannerPatterns;
-import net.minecraft.entity.Bucketable;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffectUtil;
@@ -353,17 +348,6 @@ public class BetterTooltips extends Module {
         else if (event.itemStack.getItem() == Items.SHIELD && previewBanners()) {
             ItemStack banner = createBannerFromShield(event.itemStack);
             if (banner != null) event.tooltipData = new BannerTooltipComponent(banner);
-        }
-
-        // Fish peek
-        else if (event.itemStack.getItem() instanceof EntityBucketItem bucketItem && previewEntities()) {
-            EntityType<?> type = ((EntityBucketItemAccessor) bucketItem).getEntityType();
-            Entity entity = type.create(mc.world);
-            if (entity != null) {
-                ((Bucketable) entity).copyDataFromNbt(event.itemStack.getOrCreateNbt());
-                ((EntityAccessor) entity).setInWater(true);
-                event.tooltipData = new EntityTooltipComponent(entity);
-            }
         }
     }
 

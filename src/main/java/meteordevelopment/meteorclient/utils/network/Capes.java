@@ -7,7 +7,6 @@ package meteordevelopment.meteorclient.utils.network;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.misc.MeteorIdentifier;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.texture.NativeImage;
@@ -34,7 +33,6 @@ public class Capes {
     private static final List<Cape> TO_RETRY = new ArrayList<>();
     private static final List<Cape> TO_REMOVE = new ArrayList<>();
 
-    @PreInit(dependencies = MeteorExecutor.class)
     public static void init() {
         OWNERS.clear();
         URLS.clear();

@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class WaypointArgumentType implements ArgumentType<String> {
+public class WaypointArgumentType implements ArgumentType<Waypoint> {
     private static final DynamicCommandExceptionType NO_SUCH_WAYPOINT = new DynamicCommandExceptionType(name -> Text.literal("Waypoint with name '" + name + "' doesn't exist."));
     private final boolean greedyString;
 
@@ -39,23 +39,25 @@ public class WaypointArgumentType implements ArgumentType<String> {
     }
 
     public static Waypoint get(CommandContext<?> context) {
-        return Waypoints.get().get(context.getArgument("waypoint", String.class));
+        return context.getArgument("waypoint", Waypoint.class);
     }
 
     public static Waypoint get(CommandContext<?> context, String name) {
-        return Waypoints.get().get(context.getArgument(name, String.class));
+        return context.getArgument(name, Waypoint.class);
     }
 
     @Override
-    public String parse(StringReader reader) throws CommandSyntaxException {
+    public Waypoint parse(StringReader reader) throws CommandSyntaxException {
         String argument;
         if (greedyString) {
             argument = reader.getRemaining();
             reader.setCursor(reader.getTotalLength());
         } else argument = reader.readString();
 
-        if (Waypoints.get().get(argument) == null) throw NO_SUCH_WAYPOINT.create(argument);
-        return argument;
+        Waypoint waypoint = Waypoints.get().get(argument);
+        if (waypoint == null) throw NO_SUCH_WAYPOINT.create(argument);
+
+        return waypoint;
     }
 
     @Override

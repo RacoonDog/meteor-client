@@ -10,11 +10,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import dev.xpple.clientarguments.arguments.CRegistryEntryArgumentType;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.utils.Utils;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.argument.RegistryEntryArgumentType;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -36,10 +36,10 @@ public class EnchantCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
-        builder.then(literal("one").then(argument("enchantment", RegistryEntryArgumentType.registryEntry(REGISTRY_ACCESS, RegistryKeys.ENCHANTMENT))
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
+        builder.then(literal("one").then(argument("enchantment", CRegistryEntryArgumentType.registryEntry(REGISTRY_ACCESS, RegistryKeys.ENCHANTMENT))
             .then(literal("level").then(argument("level", IntegerArgumentType.integer()).executes(context -> {
-                one(context, enchantment -> context.getArgument("level", Integer.class));
+                one(context, enchantment -> IntegerArgumentType.getInteger(context, "level"));
                 return SINGLE_SUCCESS;
             })))
             .then(literal("max").executes(context -> {
@@ -50,7 +50,7 @@ public class EnchantCommand extends Command {
 
         builder.then(literal("all_possible")
             .then(literal("level").then(argument("level", IntegerArgumentType.integer()).executes(context -> {
-                all(true, enchantment -> context.getArgument("level", Integer.class));
+                all(true, enchantment -> IntegerArgumentType.getInteger(context, "level"));
                 return SINGLE_SUCCESS;
             })))
             .then(literal("max").executes(context -> {
@@ -61,7 +61,7 @@ public class EnchantCommand extends Command {
 
         builder.then(literal("all")
             .then(literal("level").then(argument("level", IntegerArgumentType.integer()).executes(context -> {
-                all(false, enchantment -> context.getArgument("level", Integer.class));
+                all(false, enchantment -> IntegerArgumentType.getInteger(context, "level"));
                 return SINGLE_SUCCESS;
             })))
             .then(literal("max").executes(context -> {
@@ -78,9 +78,9 @@ public class EnchantCommand extends Command {
             return SINGLE_SUCCESS;
         }));
 
-        builder.then(literal("remove").then(argument("enchantment", RegistryEntryArgumentType.registryEntry(REGISTRY_ACCESS, RegistryKeys.ENCHANTMENT)).executes(context -> {
+        builder.then(literal("remove").then(argument("enchantment", CRegistryEntryArgumentType.registryEntry(REGISTRY_ACCESS, RegistryKeys.ENCHANTMENT)).executes(context -> {
             ItemStack itemStack = tryGetItemStack();
-            RegistryEntry.Reference<Enchantment> enchantment = context.getArgument("enchantment", RegistryEntry.Reference.class);
+            RegistryEntry.Reference<Enchantment> enchantment = CRegistryEntryArgumentType.getCEnchantment(context, "enchantment");
             Utils.removeEnchantment(itemStack, enchantment.value());
 
             syncItem();
@@ -88,10 +88,10 @@ public class EnchantCommand extends Command {
         })));
     }
 
-    private void one(CommandContext<CommandSource> context, Function<Enchantment, Integer> level) throws CommandSyntaxException {
+    private void one(CommandContext<FabricClientCommandSource> context, Function<Enchantment, Integer> level) throws CommandSyntaxException {
         ItemStack itemStack = tryGetItemStack();
 
-        RegistryEntry.Reference<Enchantment> enchantment = context.getArgument("enchantment", RegistryEntry.Reference.class);
+        RegistryEntry.Reference<Enchantment> enchantment = CRegistryEntryArgumentType.getCEnchantment(context, "enchantment");
         Utils.addEnchantment(itemStack, enchantment.value(), level.apply(enchantment.value()));
 
         syncItem();

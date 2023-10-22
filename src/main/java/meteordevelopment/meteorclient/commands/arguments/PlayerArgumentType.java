@@ -35,6 +35,10 @@ public class PlayerArgumentType implements ArgumentType<PlayerEntity> {
         return context.getArgument("player", PlayerEntity.class);
     }
 
+    public static PlayerEntity get(CommandContext<?> context, String name) {
+        return context.getArgument(name, PlayerEntity.class);
+    }
+
     @Override
     public PlayerEntity parse(StringReader reader) throws CommandSyntaxException {
         String argument = reader.readString();

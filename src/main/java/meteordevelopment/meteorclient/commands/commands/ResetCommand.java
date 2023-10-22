@@ -10,12 +10,11 @@ import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.commands.arguments.ModuleArgumentType;
 import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.settings.Setting;
-import meteordevelopment.meteorclient.systems.Systems;
 import meteordevelopment.meteorclient.systems.hud.Hud;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
-import net.minecraft.command.CommandSource;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 import static com.mojang.brigadier.Command.SINGLE_SUCCESS;
 
@@ -26,10 +25,10 @@ public class ResetCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.then(literal("settings")
                 .then(argument("module", ModuleArgumentType.create()).executes(context -> {
-                    Module module = context.getArgument("module", Module.class);
+                    Module module = ModuleArgumentType.get(context);
                     module.settings.forEach(group -> group.forEach(Setting::reset));
                     module.info("Reset all settings.");
                     return SINGLE_SUCCESS;
@@ -45,7 +44,7 @@ public class ResetCommand extends Command {
             return SINGLE_SUCCESS;
         })).then(literal("bind")
                 .then(argument("module", ModuleArgumentType.create()).executes(context -> {
-                    Module module = context.getArgument("module", Module.class);
+                    Module module = ModuleArgumentType.get(context);
 
                     module.keybind.set(true, -1);
                     module.info("Reset bind.");
@@ -58,7 +57,7 @@ public class ResetCommand extends Command {
                     return SINGLE_SUCCESS;
                 }))
         ).then(literal("hud").executes(context -> {
-            Systems.get(Hud.class).resetToDefaultElements();
+            Hud.get().resetToDefaultElements();
             ChatUtils.infoPrefix("HUD", "Reset all elements.");
             return SINGLE_SUCCESS;
         }));

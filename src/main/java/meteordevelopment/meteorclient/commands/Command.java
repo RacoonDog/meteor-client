@@ -12,8 +12,8 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.CommandSource;
 import net.minecraft.registry.BuiltinRegistries;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
@@ -38,26 +38,26 @@ public abstract class Command {
     }
 
     // Helper methods to painlessly infer the CommandSource generic type argument
-    protected static <T> RequiredArgumentBuilder<CommandSource, T> argument(final String name, final ArgumentType<T> type) {
+    protected static <T> RequiredArgumentBuilder<FabricClientCommandSource, T> argument(final String name, final ArgumentType<T> type) {
         return RequiredArgumentBuilder.argument(name, type);
     }
 
-    protected static LiteralArgumentBuilder<CommandSource> literal(final String name) {
+    protected static LiteralArgumentBuilder<FabricClientCommandSource> literal(final String name) {
         return LiteralArgumentBuilder.literal(name);
     }
 
-    public final void registerTo(CommandDispatcher<CommandSource> dispatcher) {
+    public final void registerTo(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         register(dispatcher, name);
         for (String alias : aliases) register(dispatcher, alias);
     }
 
-    public void register(CommandDispatcher<CommandSource> dispatcher, String name) {
-        LiteralArgumentBuilder<CommandSource> builder = LiteralArgumentBuilder.literal(name);
+    public void register(CommandDispatcher<FabricClientCommandSource> dispatcher, String name) {
+        LiteralArgumentBuilder<FabricClientCommandSource> builder = LiteralArgumentBuilder.literal(name);
         build(builder);
         dispatcher.register(builder);
     }
 
-    public abstract void build(LiteralArgumentBuilder<CommandSource> builder);
+    public abstract void build(LiteralArgumentBuilder<FabricClientCommandSource> builder);
 
     public String getName() {
         return name;

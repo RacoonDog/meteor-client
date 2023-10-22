@@ -23,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
 
-public class ProfileArgumentType implements ArgumentType<String> {
+public class ProfileArgumentType implements ArgumentType<Profile> {
     private static final DynamicCommandExceptionType NO_SUCH_PROFILE = new DynamicCommandExceptionType(name -> Text.literal("Profile with name " + name + " doesn't exist."));
 
     private static final Collection<String> EXAMPLES = List.of("pvp.meteorclient.com", "anarchy");
@@ -33,16 +33,19 @@ public class ProfileArgumentType implements ArgumentType<String> {
     }
 
     public static Profile get(CommandContext<?> context) {
-        return Profiles.get().get(context.getArgument("profile", String.class));
+        return context.getArgument("profile", Profile.class);
+    }
+
+    public static Profile get(CommandContext<?> context, String name) {
+        return context.getArgument(name, Profile.class);
     }
 
     @Override
-    public String parse(StringReader reader) throws CommandSyntaxException {
-        String argument = reader.getRemaining();
-        reader.setCursor(reader.getTotalLength());
-        if (Profiles.get().get(argument) == null) throw NO_SUCH_PROFILE.create(argument);
-
-        return argument;
+    public Profile parse(StringReader reader) throws CommandSyntaxException {
+        String argument = reader.readString();
+        Profile profile = Profiles.get().get(argument);
+        if (profile == null) throw NO_SUCH_PROFILE.create(argument);
+        return profile;
     }
 
     @Override

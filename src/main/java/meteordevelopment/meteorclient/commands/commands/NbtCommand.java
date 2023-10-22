@@ -8,9 +8,11 @@ package meteordevelopment.meteorclient.commands.commands;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import dev.xpple.clientarguments.arguments.CNbtPathArgumentType;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.commands.arguments.CompoundNbtTagArgumentType;
 import meteordevelopment.meteorclient.systems.config.Config;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.NbtPathArgumentType;
 import net.minecraft.item.ItemStack;
@@ -32,7 +34,7 @@ public class NbtCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.then(literal("add").then(argument("nbt", CompoundNbtTagArgumentType.create()).executes(s -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
 
@@ -62,11 +64,11 @@ public class NbtCommand extends Command {
             return SINGLE_SUCCESS;
         })));
 
-        builder.then(literal("remove").then(argument("nbt_path", NbtPathArgumentType.nbtPath()).executes(context -> {
+        builder.then(literal("remove").then(argument("nbt_path", CNbtPathArgumentType.nbtPath()).executes(context -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
 
             if (validBasic(stack)) {
-                NbtPathArgumentType.NbtPath path = context.getArgument("nbt_path", NbtPathArgumentType.NbtPath.class);
+                CNbtPathArgumentType.NbtPath path = CNbtPathArgumentType.getCNbtPath(context, "nbt_path");
                 path.remove(stack.getNbt());
             }
 

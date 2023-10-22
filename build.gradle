@@ -29,6 +29,10 @@ repositories {
         name = "vram"
         url = "https://maven.vram.io//"
     }
+    maven {
+        name = "xpple"
+        url = "https://maven.xpple.dev/maven2"
+    }
     mavenCentral()
 }
 
@@ -48,6 +52,7 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modInclude fabricApi.module("fabric-resource-loader-v0", project.fapi_version)
+    modInclude fabricApi.module("fabric-command-api-v2", project.fapi_version)
 
     // Compat fixes
     modCompileOnly fabricApi.module("fabric-renderer-indigo", project.fapi_version)
@@ -70,6 +75,7 @@ dependencies {
     library "io.github.llamalad7:mixinextras-fabric:${project.mixin_extras_version}"
     annotationProcessor "io.github.llamalad7:mixinextras-fabric:${project.mixin_extras_version}"
     library "de.florianmichael:WaybackAuthLib:1.0.0"
+    modInclude "dev.xpple:clientarguments:${project.clientarguments_version}"
 
     // Launch sub project
     shadow project(":launch")

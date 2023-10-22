@@ -10,6 +10,7 @@ import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandSource;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
@@ -24,7 +25,7 @@ public class ModulesCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.executes(context -> {
             ChatUtils.info("--- Modules ((highlight)%d(default)) ---", Modules.get().getCount());
 
@@ -40,7 +41,7 @@ public class ModulesCommand extends Command {
 
     private MutableText getModuleText(Module module) {
         // Hover tooltip
-        MutableText tooltip = Text.literal("");
+        MutableText tooltip = Text.empty();
 
         tooltip.append(Text.literal(module.title).formatted(Formatting.BLUE, Formatting.BOLD)).append("\n");
         tooltip.append(Text.literal(module.name).formatted(Formatting.GRAY)).append("\n\n");

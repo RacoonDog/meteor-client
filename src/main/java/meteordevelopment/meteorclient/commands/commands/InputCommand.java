@@ -11,8 +11,8 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.orbit.EventHandler;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.command.CommandSource;
 
 import java.util.Map;
 
@@ -36,15 +36,18 @@ public class InputCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         for (Map.Entry<KeyBinding, String> keyBinding : keys.entrySet()) {
             builder.then(literal(keyBinding.getValue())
                 .then(argument("ticks", IntegerArgumentType.integer(1))
                     .executes(context -> {
-                        new KeypressHandler(keyBinding.getKey(), context.getArgument("ticks", Integer.class));
+                        new KeypressHandler(keyBinding.getKey(), IntegerArgumentType.getInteger(context, "ticks"));
                         return SINGLE_SUCCESS;
                     })
-                )
+                ).executes(context -> {
+                    new KeypressHandler(keyBinding.getKey(), 1);
+                    return SINGLE_SUCCESS;
+                })
             );
         }
     }

@@ -7,12 +7,15 @@ package meteordevelopment.meteorclient.commands.commands;
 
 import baritone.api.BaritoneAPI;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.command.CommandSource;
@@ -36,6 +39,10 @@ import static com.mojang.brigadier.Command.SINGLE_SUCCESS;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class LocateCommand extends Command {
+    private static final DynamicCommandExceptionType WRONG_ITEM = new DynamicCommandExceptionType(item -> Text.literal("You must be holding a " + item + "."));
+    private static final DynamicCommandExceptionType INVALID_ITEM = new DynamicCommandExceptionType(item -> Text.literal("Cannot locate the target. Is this a valid " + item + "?"));
+    private static final DynamicCommandExceptionType NO_STRUCTURE_FOUND = new DynamicCommandExceptionType(structure -> Text.literal("No " + structure + " found nearby."));
+
     private Vec3d firstStart;
     private Vec3d firstEnd;
     private Vec3d secondStart;
@@ -62,25 +69,17 @@ public class LocateCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.then(literal("buried_treasure").executes(s -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
-            if (stack.getItem() != Items.FILLED_MAP) {
-                error("You need to hold a treasure map first");
-                return SINGLE_SUCCESS;
-            }
+            if (stack.getItem() != Items.FILLED_MAP) throw WRONG_ITEM.create("treasure map");
+
             NbtCompound tag = stack.getNbt();
             NbtList nbt1 = (NbtList) tag.get("Decorations");
-            if (nbt1 == null) {
-                error("Couldn't locate the cross. Are you holding a (highlight)treasure map(default)?");
-                return SINGLE_SUCCESS;
-            }
+            if (nbt1 == null) throw INVALID_ITEM.create("treasure map");
 
             NbtCompound iconNBT = nbt1.getCompound(0);
-            if (iconNBT == null) {
-                error("Couldn't locate the cross. Are you holding a (highlight)treasure map(default)?");
-                return SINGLE_SUCCESS;
-            }
+            if (iconNBT == null) throw INVALID_ITEM.create("treasure map");
 
             Vec3d coords = new Vec3d(iconNBT.getDouble("x"), iconNBT.getDouble("y"), iconNBT.getDouble("z"));
             MutableText text = Text.literal("Buried Treasure located at ");
@@ -92,20 +91,13 @@ public class LocateCommand extends Command {
 
         builder.then(literal("lodestone").executes(s -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
-            if (stack.getItem() != Items.COMPASS) {
-                error("You need to hold a lodestone compass");
-                return SINGLE_SUCCESS;
-            }
+            if (stack.getItem() != Items.COMPASS) throw WRONG_ITEM.create("lodestone compass");
+
             NbtCompound tag = stack.getNbt();
-            if (tag == null) {
-                error("Couldn't get the NBT data. Are you holding a (highlight)lodestone(default) compass?");
-                return SINGLE_SUCCESS;
-            }
+            if (tag == null) throw INVALID_ITEM.create("lodestone compass");
+
             NbtCompound nbt1 = tag.getCompound("LodestonePos");
-            if (nbt1 == null) {
-                error("Couldn't get the NBT data. Are you holding a (highlight)lodestone(default) compass?");
-                return SINGLE_SUCCESS;
-            }
+            if (nbt1 == null) throw INVALID_ITEM.create("lodestone compass");
 
             Vec3d coords = new Vec3d(nbt1.getDouble("X"), nbt1.getDouble("Y"), nbt1.getDouble("Z"));
             MutableText text = Text.literal("Lodestone located at ");
@@ -117,22 +109,14 @@ public class LocateCommand extends Command {
 
         builder.then(literal("mansion").executes(s -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
-            if (stack.getItem() != Items.FILLED_MAP) {
-                error("You need to hold a woodland explorer map first");
-                return SINGLE_SUCCESS;
-            }
+            if (stack.getItem() != Items.FILLED_MAP) throw WRONG_ITEM.create("woodland explorer map");
+
             NbtCompound tag = stack.getNbt();
             NbtList nbt1 = (NbtList) tag.get("Decorations");
-            if (nbt1 == null) {
-                error("Couldn't locate the mansion. Are you holding a (highlight)woodland explorer map(default)?");
-                return SINGLE_SUCCESS;
-            }
+            if (nbt1 == null) throw INVALID_ITEM.create("woodland explorer map");
 
             NbtCompound iconNBT = nbt1.getCompound(0);
-            if (iconNBT == null) {
-                error("Couldn't locate the mansion. Are you holding a (highlight)woodland explorer map(default)?");
-                return SINGLE_SUCCESS;
-            }
+            if (iconNBT == null) throw INVALID_ITEM.create("woodland explorer map");
 
             Vec3d coords = new Vec3d(iconNBT.getDouble("x"), iconNBT.getDouble("y"), iconNBT.getDouble("z"));
             MutableText text = Text.literal("Mansion located at ");
@@ -155,10 +139,8 @@ public class LocateCommand extends Command {
                 info("Please throw the first Eye of Ender");
             } else {
                 Vec3d coords = findByBlockList(strongholdBlocks);
-                if (coords == null) {
-                    error("No stronghold found nearby. You can use (highlight)Ender Eyes(default) for more success.");
-                    return SINGLE_SUCCESS;
-                }
+                if (coords == null) throw NO_STRUCTURE_FOUND.create("stronghold");
+
                 MutableText text = Text.literal("Stronghold located at ");
                 text.append(ChatUtils.formatCoords(coords));
                 text.append(".");
@@ -169,10 +151,8 @@ public class LocateCommand extends Command {
 
         builder.then(literal("nether_fortress").executes(s -> {
             Vec3d coords = findByBlockList(netherFortressBlocks);
-            if (coords == null) {
-                error("No nether fortress found.");
-                return SINGLE_SUCCESS;
-            }
+            if (coords == null) throw NO_STRUCTURE_FOUND.create("nether fortress");
+
             MutableText text = Text.literal("Fortress located at ");
             text.append(ChatUtils.formatCoords(coords));
             text.append(".");
@@ -199,11 +179,9 @@ public class LocateCommand extends Command {
                     }
                 }
             }
+
             Vec3d coords = findByBlockList(monumentBlocks);
-            if (coords == null) {
-                error("No monument found. You can try using a (highlight)Ocean explorer map(default) for more success.");
-                return SINGLE_SUCCESS;
-            }
+            if (coords == null) throw NO_STRUCTURE_FOUND.create("ocean monument");
             MutableText text = Text.literal("Monument located at ");
             text.append(ChatUtils.formatCoords(coords));
             text.append(".");

@@ -10,11 +10,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.ItemStackArgumentType;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+import net.minecraft.item.Item;
 import net.minecraft.text.Text;
 
 import static com.mojang.brigadier.Command.SINGLE_SUCCESS;
@@ -22,14 +21,13 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class DropCommand extends Command {
     private static final SimpleCommandExceptionType NOT_SPECTATOR = new SimpleCommandExceptionType(Text.literal("Can't drop items while in spectator."));
-    private static final SimpleCommandExceptionType NO_SUCH_ITEM = new SimpleCommandExceptionType(Text.literal("Could not find an item with that name!"));
 
     public DropCommand() {
         super("drop", "Automatically drops specified items.");
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         // Main Hand
         builder.then(literal("hand").executes(context -> drop(player -> player.dropSelectedItem(true))));
 
@@ -52,26 +50,24 @@ public class DropCommand extends Command {
 
         // Hotbar and main inv
         builder.then(literal("all").executes(context -> drop(player -> {
-                    for (int i = 0; i < player.getInventory().size(); i++) {
-                        InvUtils.drop().slot(i);
-                    }
-                })));
+            for (int i = 0; i < player.getInventory().size(); i++) {
+                InvUtils.drop().slot(i);
+            }
+        })));
 
         // Armor
         builder.then(literal("armor").executes(context -> drop(player -> {
-                    for (int i = 0; i < player.getInventory().armor.size(); i++) {
-                        InvUtils.drop().slotArmor(i);
-                    }
-                })));
+            for (int i = 0; i < player.getInventory().armor.size(); i++) {
+                InvUtils.drop().slotArmor(i);
+            }
+        })));
 
         // Specific item
         builder.then(argument("item", ItemStackArgumentType.itemStack(REGISTRY_ACCESS)).executes(context -> drop(player -> {
-            ItemStack stack = ItemStackArgumentType.getItemStackArgument(context, "item").createStack(1, false);
-
-            if (stack == null || stack.getItem() == Items.AIR) throw NO_SUCH_ITEM.create();
+            Item item = ItemStackArgumentType.getItemStackArgument(context, "item").getItem();
 
             for (int i = 0; i < player.getInventory().size(); i++) {
-                if (stack.getItem() == player.getInventory().getStack(i).getItem()) {
+                if (item == player.getInventory().getStack(i).getItem()) {
                     InvUtils.drop().slot(i);
                 }
             }

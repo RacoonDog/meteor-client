@@ -28,6 +28,10 @@ public class CompoundNbtTagArgumentType implements ArgumentType<NbtCompound> {
         return context.getArgument("nbt", NbtCompound.class);
     }
 
+    public static NbtCompound get(CommandContext<?> context, String name) {
+        return context.getArgument(name, NbtCompound.class);
+    }
+
     @Override
     public NbtCompound parse(StringReader reader) throws CommandSyntaxException {
         reader.skipWhitespace();

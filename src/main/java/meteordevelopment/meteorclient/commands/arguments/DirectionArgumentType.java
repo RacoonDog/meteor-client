@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.commands.arguments;
 
+import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.command.argument.EnumArgumentType;
 import net.minecraft.util.math.Direction;
 
@@ -15,5 +16,13 @@ public class DirectionArgumentType extends EnumArgumentType<Direction> {
 
     public static DirectionArgumentType create() {
         return new DirectionArgumentType();
+    }
+
+    public static Direction get(CommandContext<?> context) {
+        return context.getArgument("direction", Direction.class);
+    }
+
+    public static Direction get(CommandContext<?> context, String name) {
+        return context.getArgument(name, Direction.class);
     }
 }

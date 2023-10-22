@@ -7,9 +7,11 @@ package meteordevelopment.meteorclient.commands.commands;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.mixin.MapRendererAccessor;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.render.MapRenderer;
 import net.minecraft.command.CommandSource;
 import net.minecraft.item.FilledMapItem;
@@ -17,6 +19,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.map.MapState;
 import net.minecraft.text.Text;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
@@ -50,73 +53,38 @@ public class SaveMapCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.executes(context -> {
-
-            MapState state = getMapState();
-            if (state == null) throw MAP_NOT_FOUND.create();
-            ItemStack map = getMap();
-
+            Integer id = getMapId();
+            MapState state = FilledMapItem.getMapState(id, mc.world);
             String path = getPath();
-            if (path == null) throw OOPS.create();
 
-            saveMap(map, state, path, 128);
+            saveMap(id, state, path);
 
             return SINGLE_SUCCESS;
-        }).then(argument("scale", IntegerArgumentType.integer(1)).executes(context -> {
-            int scale = IntegerArgumentType.getInteger(context, "scale");
-
-            MapState state = getMapState();
-            if (state == null) throw MAP_NOT_FOUND.create();
-            ItemStack map = getMap();
-
-            String path = getPath();
-            if (path == null) throw OOPS.create();
-
-            saveMap(map, state, path, scale);
-
-            return SINGLE_SUCCESS;
-        }));
+        });
     }
 
-    private void saveMap(ItemStack map, MapState state, String path, int scale) {
-        //this is horrible code but it somehow works
-
-        MapRenderer mapRenderer = mc.gameRenderer.getMapRenderer();
-        MapRenderer.MapTexture texture = ((MapRendererAccessor) mapRenderer).invokeGetMapTexture(FilledMapItem.getMapId(map), state);
-
-        int[] data = texture.texture.getImage().makePixelArray();
-        BufferedImage image = new BufferedImage(128, 128, 2);
-        image.setRGB(0, 0, image.getWidth(), image.getHeight(), data, 0, 128);
-
-        BufferedImage scaledImage = new BufferedImage(scale, scale, 2);
-        if (scale != 128) {
-            Graphics2D g = scaledImage.createGraphics();
-            g.setComposite(AlphaComposite.Src);
-            g.drawImage(image, 0, 0, scale, scale, null);
-            g.dispose();
-        }
-
+    private void saveMap(Integer id, MapState state, String path) throws CommandSyntaxException {
         try {
-            ImageIO.write((scale == 128 ? image : scaledImage), "png", new File(path));
+            MapRenderer mapRenderer = mc.gameRenderer.getMapRenderer();
+            MapRenderer.MapTexture texture = ((MapRendererAccessor) mapRenderer).invokeGetMapTexture(id, state);
+            texture.texture.getImage().writeTo(new File(path));
         } catch (IOException e) {
             e.printStackTrace();
+            throw OOPS.create();
         }
     }
 
-    private MapState getMapState() {
+    private Integer getMapId() throws CommandSyntaxException {
         ItemStack map = getMap();
-        if (map == null) return null;
-
-        MapState state = FilledMapItem.getMapState(FilledMapItem.getMapId(map), mc.world);
-        if (state == null) return null;
-
-        return state;
+        if (map == null) throw MAP_NOT_FOUND.create();
+        return FilledMapItem.getMapId(map);
     }
 
-    private String getPath() {
+    private String getPath() throws CommandSyntaxException {
         String path = TinyFileDialogs.tinyfd_saveFileDialog("Save image", null, filters, null);
-        if (path == null) return null;
+        if (path == null) throw OOPS.create();
         if (!path.endsWith(".png")) path += ".png";
 
         return path;

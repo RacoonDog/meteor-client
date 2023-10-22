@@ -32,6 +32,10 @@ public class MacroArgumentType implements ArgumentType<Macro> {
         return context.getArgument("macro", Macro.class);
     }
 
+    public static Macro get(CommandContext<?> context, String name) {
+        return context.getArgument(name, Macro.class);
+    }
+
     @Override
     public Macro parse(StringReader reader) throws CommandSyntaxException {
         String argument = reader.readString();

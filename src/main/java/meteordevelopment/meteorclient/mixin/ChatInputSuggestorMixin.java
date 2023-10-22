@@ -10,6 +10,7 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.suggestion.Suggestions;
 import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.systems.config.Config;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.gui.screen.ChatInputSuggestor;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.command.CommandSource;
@@ -25,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Mixin(ChatInputSuggestor.class)
 public abstract class ChatInputSuggestorMixin {
-    @Shadow private ParseResults<CommandSource> parse;
+    @Shadow private ParseResults<FabricClientCommandSource> parse;
     @Shadow @Final TextFieldWidget textField;
     @Shadow boolean completingSuggestions;
     @Shadow private CompletableFuture<Suggestions> pendingSuggestions;
@@ -46,7 +47,7 @@ public abstract class ChatInputSuggestorMixin {
             reader.setCursor(reader.getCursor() + length);
 
             if (this.parse == null) {
-                this.parse = Commands.DISPATCHER.parse(reader, Commands.COMMAND_SOURCE);
+                this.parse = Commands.DISPATCHER.parse(reader, Commands.getCommandSource());
             }
 
             int cursor = textField.getCursor();

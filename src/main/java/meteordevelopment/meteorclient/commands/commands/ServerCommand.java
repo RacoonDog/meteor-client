@@ -15,6 +15,7 @@ import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.utils.world.TickRate;
 import meteordevelopment.orbit.EventHandler;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.command.CommandSource;
@@ -48,7 +49,7 @@ public class ServerCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.executes(context -> {
             basicInfo();
             return SINGLE_SUCCESS;
@@ -150,7 +151,7 @@ public class ServerCommand extends Command {
         MutableText ipText;
 
         if (ipv4.isEmpty()) {
-            ipText = Text.literal(Formatting.GRAY + server.address);
+            ipText = Text.literal(server.address).formatted(Formatting.GRAY);
             ipText.setStyle(ipText.getStyle()
                 .withClickEvent(new ClickEvent(
                     ClickEvent.Action.COPY_TO_CLIPBOARD,
@@ -163,7 +164,7 @@ public class ServerCommand extends Command {
             );
         }
         else {
-            ipText = Text.literal(Formatting.GRAY + server.address);
+            ipText = Text.literal(server.address).formatted(Formatting.GRAY);
             ipText.setStyle(ipText.getStyle()
                 .withClickEvent(new ClickEvent(
                     ClickEvent.Action.COPY_TO_CLIPBOARD,
@@ -174,7 +175,7 @@ public class ServerCommand extends Command {
                     Text.literal("Copy to clipboard")
                 ))
             );
-            MutableText ipv4Text = Text.literal(String.format("%s (%s)", Formatting.GRAY, ipv4));
+            MutableText ipv4Text = Text.literal(" (" + ipv4 + ")").formatted(Formatting.GRAY);
             ipv4Text.setStyle(ipText.getStyle()
                 .withClickEvent(new ClickEvent(
                     ClickEvent.Action.COPY_TO_CLIPBOARD,
@@ -188,7 +189,7 @@ public class ServerCommand extends Command {
             ipText.append(ipv4Text);
         }
         info(
-            Text.literal(String.format("%sIP: ", Formatting.GRAY))
+            Text.literal("IP: ").formatted(Formatting.GRAY)
             .append(ipText)
         );
 

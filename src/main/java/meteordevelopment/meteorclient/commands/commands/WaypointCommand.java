@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.commands.arguments.WaypointArgumentType;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoint;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandSource;
 import net.minecraft.util.Formatting;
 
@@ -24,7 +25,7 @@ public class WaypointCommand extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<CommandSource> builder) {
+    public void build(LiteralArgumentBuilder<FabricClientCommandSource> builder) {
         builder.then(literal("list").executes(context -> {
             if (Waypoints.get().waypoints.isEmpty()) error("No created waypoints.");
             else {

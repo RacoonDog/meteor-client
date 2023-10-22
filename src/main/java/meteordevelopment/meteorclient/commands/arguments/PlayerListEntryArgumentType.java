@@ -35,6 +35,10 @@ public class PlayerListEntryArgumentType implements ArgumentType<PlayerListEntry
         return context.getArgument("player", PlayerListEntry.class);
     }
 
+    public static PlayerListEntry get(CommandContext<?> context, String name) {
+        return context.getArgument(name, PlayerListEntry.class);
+    }
+
     @Override
     public PlayerListEntry parse(StringReader reader) throws CommandSyntaxException {
         String argument = reader.readString();

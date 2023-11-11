@@ -3,12 +3,14 @@
  * Copyright (c) Meteor Development.
  */
 
-package meteordevelopment.meteorclient.utils.misc;
+package meteordevelopment.meteorclient.reflection;
+
+import meteordevelopment.meteorclient.reflection.ReflectInit;
 
 import java.util.function.Consumer;
 
 /**
- * Indicates that this subtype can be registered via {@link meteordevelopment.meteorclient.utils.ReflectInit#initRegisterable(Class, Consumer)}
+ * Indicates that this subtype can be registered via {@link ReflectInit#initRegisterable(Class, Consumer)}
  */
 public interface IRegisterable {
 }

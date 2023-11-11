@@ -3,18 +3,15 @@
  * Copyright (c) Meteor Development.
  */
 
-package meteordevelopment.meteorclient.systems.modules;
+package meteordevelopment.meteorclient.reflection;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Signifies that the target {@link Module} requires the specified mod identifiers to be present in order to be registered.
- */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface ModDependant {
-    String[] dependencies() default { };
+@Target(ElementType.METHOD)
+public @interface PreInit {
+    Class<?>[] dependencies() default { };
 }

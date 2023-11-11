@@ -7,7 +7,7 @@ package meteordevelopment.meteorclient.systems;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.utils.files.StreamUtils;
-import meteordevelopment.meteorclient.utils.misc.IRegisterable;
+import meteordevelopment.meteorclient.reflection.IRegisterable;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;

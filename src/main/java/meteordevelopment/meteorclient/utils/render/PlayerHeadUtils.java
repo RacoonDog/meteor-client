@@ -3,7 +3,7 @@ package meteordevelopment.meteorclient.utils.render;
 import com.google.gson.Gson;
 import meteordevelopment.meteorclient.systems.accounts.TexturesJson;
 import meteordevelopment.meteorclient.systems.accounts.UuidToProfileResponse;
-import meteordevelopment.meteorclient.utils.PostInit;
+import meteordevelopment.meteorclient.reflection.PostInit;
 import meteordevelopment.meteorclient.utils.network.Http;
 
 import java.util.Base64;

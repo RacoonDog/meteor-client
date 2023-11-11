@@ -7,7 +7,7 @@ package meteordevelopment.meteorclient.utils.misc;
 
 import com.mojang.authlib.GameProfile;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.reflection.PreInit;
 import net.minecraft.client.network.ClientConnectionState;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.OtherClientPlayerEntity;

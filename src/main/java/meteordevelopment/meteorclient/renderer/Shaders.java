@@ -5,7 +5,7 @@
 
 package meteordevelopment.meteorclient.renderer;
 
-import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.reflection.PreInit;
 
 public class Shaders {
     public static Shader POS_COLOR;

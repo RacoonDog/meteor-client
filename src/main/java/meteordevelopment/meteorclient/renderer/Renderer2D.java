@@ -6,7 +6,7 @@
 package meteordevelopment.meteorclient.renderer;
 
 import meteordevelopment.meteorclient.gui.renderer.packer.TextureRegion;
-import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.reflection.PreInit;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.util.math.MatrixStack;
 

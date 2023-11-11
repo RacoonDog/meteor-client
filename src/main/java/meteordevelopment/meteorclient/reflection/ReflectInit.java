@@ -3,16 +3,12 @@
  * Copyright (c) Meteor Development.
  */
 
-package meteordevelopment.meteorclient.utils;
+package meteordevelopment.meteorclient.reflection;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.pathing.PathManagers;
-import meteordevelopment.meteorclient.systems.modules.ModDependant;
-import meteordevelopment.meteorclient.systems.modules.PathingDependant;
-import meteordevelopment.meteorclient.systems.modules.RegisterableDependant;
-import meteordevelopment.meteorclient.utils.misc.IRegisterable;
 import net.fabricmc.loader.api.FabricLoader;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;

@@ -5,7 +5,7 @@
 
 package meteordevelopment.meteorclient.utils.network;
 
-import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.reflection.PreInit;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

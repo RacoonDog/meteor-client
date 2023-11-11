@@ -3,7 +3,9 @@
  * Copyright (c) Meteor Development.
  */
 
-package meteordevelopment.meteorclient.systems.modules;
+package meteordevelopment.meteorclient.reflection;
+
+import meteordevelopment.meteorclient.systems.modules.Module;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

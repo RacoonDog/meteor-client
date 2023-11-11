@@ -8,7 +8,7 @@ package meteordevelopment.meteorclient.systems;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.systems.config.Config;
-import meteordevelopment.meteorclient.utils.ReflectInit;
+import meteordevelopment.meteorclient.reflection.ReflectInit;
 import meteordevelopment.orbit.EventHandler;
 
 import java.io.File;

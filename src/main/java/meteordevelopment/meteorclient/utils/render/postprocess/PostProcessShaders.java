@@ -1,6 +1,6 @@
 package meteordevelopment.meteorclient.utils.render.postprocess;
 
-import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.reflection.PreInit;
 import net.minecraft.client.render.VertexConsumerProvider;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;

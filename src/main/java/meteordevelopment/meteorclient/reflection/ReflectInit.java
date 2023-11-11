@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.reflection;
 
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
@@ -45,26 +46,29 @@ public class ReflectInit {
         for (Reflections reflection : reflections) {
             Set<Class<? extends T>> initTasks = reflection.getSubTypesOf(registerableClass);
             if (initTasks == null) return;
+            Set<Class<? extends T>> allTasks = new ReferenceOpenHashSet<>(initTasks);
 
             for (Iterator<Class<? extends T>> it; (it = initTasks.iterator()).hasNext();) {
                 Class<? extends T> clazz = it.next();
                 if (clazz.isAnnotationPresent(PathingDependant.class) && !PathManagers.isPresent()) {
                     it.remove();
+                    allTasks.remove(clazz);
                     continue;
                 }
                 ModDependant modDependant;
                 if ((modDependant = clazz.getAnnotation(ModDependant.class)) != null) {
                     if (checkDependencies(modDependant)) {
                         it.remove();
+                        allTasks.remove(clazz);
                         continue;
                     }
                 }
-                reflectInitRegisterable(clazz, initTasks, registrationCallback);
+                reflectInitRegisterable(clazz, initTasks, allTasks, registrationCallback);
             }
         }
     }
 
-    private static <T extends IRegisterable> void reflectInitRegisterable(Class<? extends T> registerableClass, Set<Class<? extends T>> left, Consumer<T> registrationCallback) {
+    private static <T extends IRegisterable> void reflectInitRegisterable(Class<? extends T> registerableClass, Set<Class<? extends T>> left, Set<Class<? extends T>> all, Consumer<T> registrationCallback) {
         left.remove(registerableClass);
 
         RegisterableDependant registerableDependant;
@@ -78,7 +82,9 @@ public class ReflectInit {
             }
             for (Class<? extends T> dependency : dependencies) {
                 if (left.contains(dependency)) {
-                    reflectInitRegisterable(dependency, left, registrationCallback);
+                    reflectInitRegisterable(dependency, left, all, registrationCallback);
+                } else if (!all.contains(dependency)) {
+                    MeteorClient.LOG.error("Registerable '{}' defines dependency '{}' which could not be registered.", registerableClass.getName(), dependency.getName());
                 }
             }
         }

@@ -17,6 +17,10 @@ public class PathManagers {
         return INSTANCE;
     }
 
+    public static boolean isPresent() {
+        return !(INSTANCE instanceof NopPathManager);
+    }
+
     @PreInit
     public static void init() {
         if (exists("meteordevelopment.voyager.PathManager")) {

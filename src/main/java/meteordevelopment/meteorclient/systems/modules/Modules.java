@@ -16,23 +16,11 @@ import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.MouseButtonEvent;
-import meteordevelopment.meteorclient.pathing.BaritoneUtils;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
-import meteordevelopment.meteorclient.systems.modules.combat.*;
-import meteordevelopment.meteorclient.systems.modules.misc.*;
-import meteordevelopment.meteorclient.systems.modules.misc.swarm.Swarm;
-import meteordevelopment.meteorclient.systems.modules.movement.*;
-import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFly;
-import meteordevelopment.meteorclient.systems.modules.movement.speed.Speed;
-import meteordevelopment.meteorclient.systems.modules.player.*;
-import meteordevelopment.meteorclient.systems.modules.render.*;
-import meteordevelopment.meteorclient.systems.modules.render.blockesp.BlockESP;
-import meteordevelopment.meteorclient.systems.modules.render.marker.Marker;
-import meteordevelopment.meteorclient.systems.modules.world.Timer;
-import meteordevelopment.meteorclient.systems.modules.world.*;
+import meteordevelopment.meteorclient.utils.ReflectInit;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.misc.MeteorIdentifier;
@@ -84,12 +72,7 @@ public class Modules extends System<Modules> {
 
     @Override
     public void init() {
-        initCombat();
-        initPlayer();
-        initMovement();
-        initRender();
-        initWorld();
-        initMisc();
+        ReflectInit.initRegisterable(Module.class, this::add);
     }
 
     @Override
@@ -379,195 +362,6 @@ public class Modules extends System<Modules> {
 
         // Register color settings for the module
         module.settings.registerColorSettings(module);
-    }
-
-    private void initCombat() {
-        add(new AnchorAura());
-        add(new AntiAnvil());
-        add(new AntiBed());
-        add(new ArrowDodge());
-        add(new AutoAnvil());
-        add(new AutoArmor());
-        add(new AutoCity());
-        add(new AutoEXP());
-        add(new AutoTotem());
-        add(new AutoTrap());
-        add(new AutoWeapon());
-        add(new AutoWeb());
-        add(new BedAura());
-        add(new BowAimbot());
-        add(new BowSpam());
-        add(new Burrow());
-        add(new Criticals());
-        add(new CrystalAura());
-        add(new Hitboxes());
-        add(new HoleFiller());
-        add(new KillAura());
-        add(new Offhand());
-        add(new Quiver());
-        add(new SelfAnvil());
-        add(new SelfTrap());
-        add(new SelfWeb());
-        add(new Surround());
-    }
-
-    private void initPlayer() {
-        add(new AntiHunger());
-        add(new AutoEat());
-        add(new AutoFish());
-        add(new AutoGap());
-        add(new AutoMend());
-        add(new AutoReplenish());
-        add(new AutoTool());
-        add(new ChestSwap());
-        add(new EXPThrower());
-        add(new FakePlayer());
-        add(new FastUse());
-        add(new GhostHand());
-        add(new LiquidInteract());
-        add(new MiddleClickExtra());
-        add(new BreakDelay());
-        add(new NoInteract());
-        add(new NoMiningTrace());
-        add(new NoRotate());
-        add(new OffhandCrash());
-        add(new PacketMine());
-        add(new Portals());
-        add(new PotionSaver());
-        add(new PotionSpoof());
-        add(new Reach());
-        add(new Rotation());
-        add(new SpeedMine());
-    }
-
-    private void initMovement() {
-        add(new AirJump());
-        add(new Anchor());
-        add(new AntiAFK());
-        add(new AntiVoid());
-        add(new AutoJump());
-        add(new AutoWalk());
-        add(new Blink());
-        add(new BoatFly());
-        add(new ClickTP());
-        add(new ElytraBoost());
-        add(new ElytraFly());
-        add(new EntityControl());
-        add(new EntitySpeed());
-        add(new FastClimb());
-        add(new Flight());
-        add(new GUIMove());
-        add(new HighJump());
-        add(new Jesus());
-        add(new LongJump());
-        add(new NoFall());
-        add(new NoSlow());
-        add(new Parkour());
-        add(new ReverseStep());
-        add(new SafeWalk());
-        add(new Scaffold());
-        add(new Slippy());
-        add(new Sneak());
-        add(new Speed());
-        add(new Spider());
-        add(new Sprint());
-        add(new Step());
-        add(new TridentBoost());
-        add(new Velocity());
-    }
-
-    private void initRender() {
-        add(new BetterTooltips());
-        add(new BlockSelection());
-        add(new BossStack());
-        add(new Breadcrumbs());
-        add(new BreakIndicators());
-        add(new CameraTweaks());
-        add(new Chams());
-        add(new CityESP());
-        add(new EntityOwner());
-        add(new ESP());
-        add(new Freecam());
-        add(new FreeLook());
-        add(new Fullbright());
-        add(new HandView());
-        add(new HoleESP());
-        add(new ItemPhysics());
-        add(new ItemHighlight());
-        add(new LightOverlay());
-        add(new LogoutSpots());
-        add(new Marker());
-        add(new Nametags());
-        add(new NoRender());
-        add(new BlockESP());
-        add(new StorageESP());
-        add(new TimeChanger());
-        add(new Tracers());
-        add(new Trail());
-        add(new Trajectories());
-        add(new UnfocusedCPU());
-        add(new VoidESP());
-        add(new WallHack());
-        add(new WaypointsModule());
-        add(new Xray());
-        add(new Zoom());
-        add(new Blur());
-        add(new PopChams());
-        add(new TunnelESP());
-    }
-
-    private void initWorld() {
-        add(new AirPlace());
-        add(new Ambience());
-        add(new Collisions());
-        add(new AutoBreed());
-        add(new AutoBrewer());
-        add(new AutoMount());
-        add(new AutoNametag());
-        add(new AutoShearer());
-        add(new AutoSign());
-        add(new AutoSmelter());
-        add(new BuildHeight());
-        add(new EChestFarmer());
-        add(new EndermanLook());
-        add(new Flamethrower());
-        add(new LiquidFiller());
-        add(new MountBypass());
-        add(new NoGhostBlocks());
-        add(new Nuker());
-        add(new StashFinder());
-        add(new SpawnProofer());
-        add(new Timer());
-        add(new VeinMiner());
-        add(new HighwayBuilder());
-
-        if (BaritoneUtils.IS_AVAILABLE) {
-            add(new Excavator());
-            add(new InfinityMiner());
-        }
-    }
-
-    private void initMisc() {
-        add(new Swarm());
-        add(new AntiPacketKick());
-        add(new AutoClicker());
-        add(new AutoLog());
-        add(new AutoReconnect());
-        add(new AutoRespawn());
-        add(new BetterBeacons());
-        add(new BetterChat());
-        add(new BetterTab());
-        add(new BookBot());
-        add(new DiscordPresence());
-        add(new MessageAura());
-        add(new NameProtect());
-        add(new Notebot());
-        add(new Notifier());
-        add(new PacketCanceller());
-        add(new SoundBlocker());
-        add(new Spam());
-        add(new ServerSpoof());
-        add(new InventoryTweaks());
     }
 
     public static class ModuleRegistry extends SimpleRegistry<Module> {

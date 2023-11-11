@@ -13,6 +13,7 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.systems.modules.RegisterableDependant;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
 import meteordevelopment.meteorclient.utils.entity.SortPriority;
 import meteordevelopment.meteorclient.utils.entity.Target;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
+@RegisterableDependant(dependencies = CrystalAura.class)
 public class KillAura extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgTargeting = settings.createGroup("Targeting");

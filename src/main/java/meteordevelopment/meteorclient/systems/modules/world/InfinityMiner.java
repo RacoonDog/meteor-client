@@ -15,6 +15,7 @@ import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.PathingDependant;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
@@ -34,6 +35,7 @@ import net.minecraft.util.math.BlockPos;
 import java.util.List;
 import java.util.function.Predicate;
 
+@PathingDependant
 public class InfinityMiner extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgWhenFull = settings.createGroup("When Full");

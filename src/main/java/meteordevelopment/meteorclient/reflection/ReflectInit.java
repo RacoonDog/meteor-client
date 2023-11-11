@@ -75,6 +75,7 @@ public class ReflectInit {
         if ((registerableDependant = registerableClass.getAnnotation(RegisterableDependant.class)) != null) {
             Class<? extends T>[] dependencies;
             try {
+                //noinspection unchecked
                 dependencies = (Class<? extends T>[]) registerableDependant.dependencies();
             } catch (ClassCastException e) {
                 MeteorClient.LOG.error("Registerable '{}' declares dependencies which are of a different subtype, or that are not registerable.", registerableClass.getName());
@@ -85,6 +86,7 @@ public class ReflectInit {
                     reflectInitRegisterable(dependency, left, all, registrationCallback);
                 } else if (!all.contains(dependency)) {
                     MeteorClient.LOG.error("Registerable '{}' defines dependency '{}' which could not be registered.", registerableClass.getName(), dependency.getName());
+                    return;
                 }
             }
         }

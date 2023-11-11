@@ -7,6 +7,7 @@ package meteordevelopment.meteorclient.systems;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.utils.files.StreamUtils;
+import meteordevelopment.meteorclient.utils.misc.IRegisterable;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
@@ -19,7 +20,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public abstract class System<T> implements ISerializable<T> {
+public abstract class System<T> implements ISerializable<T>, IRegisterable {
     private final String name;
     private File file;
 

@@ -7,15 +7,8 @@ package meteordevelopment.meteorclient.systems;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
-import meteordevelopment.meteorclient.systems.accounts.Accounts;
 import meteordevelopment.meteorclient.systems.config.Config;
-import meteordevelopment.meteorclient.systems.friends.Friends;
-import meteordevelopment.meteorclient.systems.hud.Hud;
-import meteordevelopment.meteorclient.systems.macros.Macros;
-import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.systems.profiles.Profiles;
-import meteordevelopment.meteorclient.systems.proxies.Proxies;
-import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
+import meteordevelopment.meteorclient.utils.ReflectInit;
 import meteordevelopment.orbit.EventHandler;
 
 import java.io.File;
@@ -42,14 +35,7 @@ public class Systems {
         // Registers the colors from config tab. This allows rainbow colours to work for friends.
         config.settings.registerColorSettings(null);
 
-        add(new Modules());
-        add(new Macros());
-        add(new Friends());
-        add(new Accounts());
-        add(new Waypoints());
-        add(new Profiles());
-        add(new Proxies());
-        add(new Hud());
+        ReflectInit.initRegisterable(System.class, Systems::add);
 
         MeteorClient.EVENT_BUS.subscribe(Systems.class);
     }

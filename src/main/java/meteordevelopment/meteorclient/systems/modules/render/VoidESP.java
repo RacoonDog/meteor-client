@@ -108,15 +108,49 @@ public class VoidESP extends Module {
         int pz = mc.player.getBlockPos().getZ();
         int radius = horizontalRadius.get();
 
-        for (int x = px - radius; x <= px + radius; x++) {
-            for (int z = pz - radius; z <= pz + radius; z++) {
+        int x1 = px - radius;
+        int z1 = pz - radius;
+        int x2 = px + radius;
+        int z2 = pz + radius;
+
+        int cx1 = x1 >> 4;
+        int cz1 = z1 >> 4;
+        int cx2 = x2 >> 4;
+        int cz2 = z2 >> 4;
+
+        if (cx1 == cx2 && cz1 == cz2) {
+            Chunk chunk = mc.world.getChunk(cx1, cz1, ChunkStatus.FULL, false);
+            if (chunk == null) return;
+            iterateChunk(chunk, x1, z1, x2, z2);
+        } else {
+            for (int cx = cx1; cx <= cx2; cx++) {
+                int xEdge = cx << 4;
+                int xMin = Math.max(xEdge, x1);
+                int xMax = Math.min(xEdge + 15, x2);
+
+                for (int cz = cz1; cz <= cz2; cz++) {
+                    int zEdge = cz << 4;
+                    int zMin = Math.max(zEdge, z1);
+                    int zMax = Math.min(zEdge + 15, z2);
+
+                    Chunk chunk = mc.world.getChunk(cx, cz, ChunkStatus.FULL, false);
+                    if (chunk == null) continue;
+                    iterateChunk(chunk, xMin, zMin, xMax, zMax);
+                }
+            }
+        }
+    }
+
+    private void iterateChunk(Chunk chunk, int x1, int z1, int x2, int z2) {
+        for (int x = x1; x <= x2; x++) {
+            for (int z = z1; z <= z2; z++) {
                 blockPos.set(x, mc.world.getBottomY(), z);
-                if (isHole(blockPos, false)) voidHoles.add(voidHolePool.get().set(blockPos.set(x, mc.world.getBottomY(), z), false));
+                if (isHole(chunk, blockPos, false)) voidHoles.add(voidHolePool.get().set(chunk, blockPos, false));
 
                 // Check for nether roof
                 if (netherRoof.get() && PlayerUtils.getDimension() == Dimension.Nether) {
                     blockPos.set(x, 127, z);
-                    if (isHole(blockPos, true)) voidHoles.add(voidHolePool.get().set(blockPos.set(x, 127, z), true));
+                    if (isHole(chunk, blockPos, true)) voidHoles.add(voidHolePool.get().set(chunk ,blockPos.set(x, 127, z), true));
                 }
             }
         }
@@ -127,10 +161,7 @@ public class VoidESP extends Module {
         for (Void voidHole : voidHoles) voidHole.render(event);
     }
 
-    private boolean isBlockWrong(BlockPos blockPos) {
-        Chunk chunk = mc.world.getChunk(blockPos.getX() >> 4, blockPos.getZ() >> 4, ChunkStatus.FULL, false);
-        if (chunk == null) return true;
-
+    private boolean isBlockWrong(BlockPos blockPos, Chunk chunk) {
         Block block = chunk.getBlockState(blockPos).getBlock();
 
         if (airOnly.get()) return block != Blocks.AIR;
@@ -138,28 +169,48 @@ public class VoidESP extends Module {
     }
 
     private boolean isHole(BlockPos.Mutable blockPos, boolean nether) {
-        for (int i = 0; i < holeHeight.get(); i++) {
-            blockPos.setY(nether ? 127 - i : mc.world.getBottomY());
-            if (isBlockWrong(blockPos)) return false;
-        }
+        Chunk chunk = mc.world.getChunk(blockPos.getX() >> 4, blockPos.getZ() >> 4, ChunkStatus.FULL, false);
+        if (chunk == null) return false;
+        return isHole(chunk, blockPos, nether);
+    }
 
-        return true;
+    private boolean isHole(Chunk chunk, BlockPos.Mutable blockPos, boolean nether) {
+        if (nether) {
+            for (int y = 128 - holeHeight.get(); y <= 127; y++) {
+                if (isBlockWrong(blockPos.setY(y), chunk)) return false;
+            }
+            return true;
+        } else {
+            return !isBlockWrong(blockPos.setY(mc.world.getBottomY()), chunk);
+        }
     }
 
     private class Void {
+        private static final int MASK = ~0xF;
+
         private int x, y, z;
         private int excludeDir;
 
-        public Void set(BlockPos.Mutable blockPos, boolean nether) {
+        public Void set(Chunk chunk, BlockPos.Mutable blockPos, boolean nether) {
             x = blockPos.getX();
             y = blockPos.getY();
             z = blockPos.getZ();
 
             excludeDir = 0;
 
+            int xChunk = x & MASK;
+            int zChunk = z & MASK;
+
             for (Direction side : SIDES) {
-                blockPos.set(x + side.getOffsetX(), y, z + side.getOffsetZ());
-                if (isHole(blockPos, nether)) excludeDir |= Dir.get(side);
+                int offsetX = x + side.getOffsetX();
+                int offsetZ = z + side.getOffsetZ();
+                blockPos.set(offsetX, y, offsetZ);
+
+                if ((offsetX & MASK) == xChunk && (offsetZ & MASK) == zChunk) {
+                    if (isHole(chunk, blockPos, nether)) excludeDir |= Dir.get(side);
+                } else {
+                    if (isHole(blockPos, nether)) excludeDir |= Dir.get(side);
+                }
             }
 
             return this;

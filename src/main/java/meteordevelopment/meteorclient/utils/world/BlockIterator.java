@@ -92,7 +92,7 @@ public class BlockIterator {
                 int chunkZ2 = Math.min(chunkEdgeZ + 15, z2);
 
                 if (cy1 == cy2) sectionIterator(cx, cy1, cz, chunkX1, y1, chunkZ1, chunkX2, y2, chunkZ2);
-                chunkIterator(cx, cz, cy1, cy2, chunkX1, y1, chunkZ1, chunkX2, y2, chunkZ2);
+                else chunkIterator(cx, cz, cy1, cy2, chunkX1, y1, chunkZ1, chunkX2, y2, chunkZ2);
             }
         }
     }

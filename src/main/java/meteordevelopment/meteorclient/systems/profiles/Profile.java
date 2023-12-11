@@ -5,12 +5,14 @@
 
 package meteordevelopment.meteorclient.systems.profiles;
 
+import meteordevelopment.meteorclient.pathing.PathManagers;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.hud.Hud;
 import meteordevelopment.meteorclient.systems.macros.Macros;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.files.StreamUtils;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -70,6 +72,13 @@ public class Profile implements ISerializable<Profile> {
         .build()
     );
 
+    public Setting<Boolean> pathManager = sgSave.add(new BoolSetting.Builder()
+        .name("path-manager")
+        .description("Whether the profile should save pathing manager settings.")
+        .defaultValue(false)
+        .build()
+    );
+
     public Profile() {}
     public Profile(NbtElement tag) {
         fromTag((NbtCompound) tag);
@@ -82,6 +91,7 @@ public class Profile implements ISerializable<Profile> {
         if (macros.get()) Macros.get().load(folder);
         if (modules.get()) Modules.get().load(folder);
         if (waypoints.get()) Waypoints.get().load(folder);
+        if (pathManager.get()) StreamUtils.writeNbt(folder, new File("path-manager"), PathManagers.get().getSettings().get().toTag());
     }
 
     public void save() {
@@ -91,6 +101,10 @@ public class Profile implements ISerializable<Profile> {
         if (macros.get()) Macros.get().save(folder);
         if (modules.get()) Modules.get().save(folder);
         if (waypoints.get()) Waypoints.get().save(folder);
+        if (pathManager.get()) {
+            NbtCompound tag = StreamUtils.readNbt(folder, new File("path-manager"));
+            if (tag != null) PathManagers.get().getSettings().get().fromTag(tag);
+        }
     }
 
     public void delete() {

@@ -9,22 +9,14 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.utils.files.StreamUtils;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.util.crash.CrashException;
-import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
-import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 public abstract class System<T> implements ISerializable<T> {
     private final String name;
     private File file;
 
     protected boolean isFirstInit;
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss", Locale.ROOT);
 
     public System(String name) {
         this.name = name;
@@ -44,18 +36,7 @@ public abstract class System<T> implements ISerializable<T> {
         NbtCompound tag = toTag();
         if (tag == null) return;
 
-        try {
-            File tempFile = File.createTempFile(MeteorClient.MOD_ID, file.getName());
-            NbtIo.write(tag, tempFile);
-
-            if (folder != null) file = new File(folder, file.getName());
-
-            file.getParentFile().mkdirs();
-            StreamUtils.copy(tempFile, file);
-            tempFile.delete();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        StreamUtils.writeNbt(folder, file, tag);
     }
 
     public void save() {
@@ -66,24 +47,8 @@ public abstract class System<T> implements ISerializable<T> {
         File file = getFile();
         if (file == null) return;
 
-        try {
-            if (folder != null) file = new File(folder, file.getName());
-
-            if (file.exists()) {
-                try {
-                    fromTag(NbtIo.read(file));
-                } catch (CrashException e) {
-                    String backupName = FilenameUtils.removeExtension(file.getName()) + "-" + ZonedDateTime.now().format(DATE_TIME_FORMATTER) + ".backup.nbt";
-                    File backup = new File(file.getParentFile(), backupName);
-                    StreamUtils.copy(file, backup);
-                    MeteorClient.LOG.error("Error loading " + this.name + ". Possibly corrupted?");
-                    MeteorClient.LOG.info("Saved settings backup to '" + backup + "'.");
-                    e.printStackTrace();
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        NbtCompound tag = StreamUtils.readNbt(folder, file);
+        if (tag != null) fromTag(tag);
     }
 
     public void load() {

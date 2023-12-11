@@ -91,7 +91,7 @@ public class Profile implements ISerializable<Profile> {
         if (macros.get()) Macros.get().load(folder);
         if (modules.get()) Modules.get().load(folder);
         if (waypoints.get()) Waypoints.get().load(folder);
-        if (pathManager.get()) StreamUtils.writeNbt(folder, new File("path-manager"), PathManagers.get().toTag());
+        if (pathManager.get()) StreamUtils.writeNbt(folder, "path-manager", PathManagers.get().toTag());
     }
 
     public void save() {
@@ -101,7 +101,7 @@ public class Profile implements ISerializable<Profile> {
         if (macros.get()) Macros.get().save(folder);
         if (modules.get()) Modules.get().save(folder);
         if (waypoints.get()) Waypoints.get().save(folder);
-        if (pathManager.get()) PathManagers.get().fromTag(StreamUtils.readNbt(folder, new File("path-manager")));
+        if (pathManager.get()) PathManagers.get().fromTag(StreamUtils.readNbt(folder, "path-manager"));
     }
 
     public void delete() {

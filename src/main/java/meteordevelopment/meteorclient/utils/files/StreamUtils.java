@@ -59,11 +59,18 @@ public class StreamUtils {
     }
 
     public static void writeNbt(@Nullable File folder, File file, NbtCompound tag) {
+        if (folder != null) file = new File(folder, file.getName());
+        writeNbt(file, tag);
+    }
+
+    public static void writeNbt(File folder, String fileName, NbtCompound tag) {
+        writeNbt(new File(folder, fileName), tag);
+    }
+
+    public static void writeNbt(File file, NbtCompound tag) {
         try {
             File tempFile = File.createTempFile(MeteorClient.MOD_ID, file.getName());
             NbtIo.write(tag, tempFile);
-
-            if (folder != null) file = new File(folder, file.getName());
 
             file.getParentFile().mkdirs();
             StreamUtils.copy(tempFile, file);
@@ -75,9 +82,18 @@ public class StreamUtils {
 
     @Nullable
     public static NbtCompound readNbt(@Nullable File folder, File file) {
-        try {
-            if (folder != null) file = new File(folder, file.getName());
+        if (folder != null) file = new File(folder, file.getName());
+        return readNbt(file);
+    }
 
+    @Nullable
+    public static NbtCompound readNbt(File folder, String fileName) {
+        return readNbt(new File(folder, fileName));
+    }
+
+    @Nullable
+    public static NbtCompound readNbt(File file) {
+        try {
             if (file.exists()) {
                 try {
                     return NbtIo.read(file);

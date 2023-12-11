@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.Settings;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.function.Predicate;
@@ -34,6 +35,14 @@ public interface IPathManager {
     float getTargetPitch();
 
     ISettings getSettings();
+
+    default NbtCompound toTag() {
+        return getSettings().get().toTag();
+    }
+
+    default void fromTag(NbtCompound tag) {
+        if (tag != null) getSettings().get().fromTag(tag);
+    }
 
     interface ISettings {
         Settings get();

@@ -11,61 +11,133 @@ import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.pathing.PathManagers;
 import net.fabricmc.loader.api.FabricLoader;
+import org.jetbrains.annotations.Nullable;
 import org.reflections.Reflections;
+import org.reflections.ReflectionsException;
 import org.reflections.scanners.Scanners;
+import org.reflections.serializers.JsonSerializer;
+import org.reflections.serializers.Serializer;
 
+import java.io.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.zip.Adler32;
 
 public class ReflectInit {
-    private static final List<Reflections> reflections = new ArrayList<>();
+    private static Reflections reflections;
+    private static final File CACHE = new File(MeteorClient.FOLDER, "reflections-cache");
 
     public static void registerPackages() {
-        add(MeteorClient.ADDON);
+        if (!CACHE.exists()) CACHE.mkdir();
+
+        long timestamp = System.nanoTime();
+
+        Serializer serializer = new JsonSerializer();
+
+        Reflections meteorReflections = scanOrCreateReflections(MeteorClient.ADDON, serializer);
 
         for (MeteorAddon addon : AddonManager.ADDONS) {
             try {
-                add(addon);
+                Reflections addonReflections = scanReflections(addon, serializer);
+                if (addonReflections != null) meteorReflections.merge(addonReflections);
             } catch (AbstractMethodError e) {
                 throw new RuntimeException("Addon \"%s\" is too old and cannot be ran.".formatted(addon.name), e);
             }
         }
+
+        reflections = meteorReflections;
+
+        timestamp = System.nanoTime() - timestamp;
+
+        MeteorClient.LOG.info("ReflectInit scan took %.3f ms".formatted(timestamp / 1000000d));
     }
 
-    private static void add(MeteorAddon addon) {
+    private static Reflections scanOrCreateReflections(MeteorAddon addon, Serializer serializer) {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            try {
+                File cacheFile = new File(CACHE, addon.id + "-reflections.json");
+                File checksumFile = new File(CACHE, addon.id + ".checksum");
+                String checksum = checksum(addon);
+
+                if (cacheFile.exists() && checksumFile.exists()) {
+                    try (BufferedReader reader = new BufferedReader(new FileReader(checksumFile))) {
+                        if (checksum.equals(reader.readLine())) {
+                            try (FileInputStream inputStream = new FileInputStream(cacheFile)) {
+                                return serializer.read(inputStream);
+                            }
+                        }
+                    }
+                }
+
+                try (FileWriter checksumWriter = new FileWriter(checksumFile)) {
+                    checksumWriter.write(checksum);
+                }
+
+                Reflections addonReflections = new Reflections(addon.getPackage(), Scanners.MethodsAnnotated, Scanners.SubTypes, Scanners.FieldsAnnotated);
+                addonReflections.save(cacheFile.getAbsolutePath(), serializer);
+                return addonReflections;
+            } catch (IOException | ReflectionsException e) {
+                MeteorClient.LOG.error("Error loading reflections from addon '{}'", addon.name);
+                e.printStackTrace();
+            }
+        }
+
+        return new Reflections(addon.getPackage(), Scanners.MethodsAnnotated, Scanners.SubTypes, Scanners.FieldsAnnotated);
+    }
+
+    @Nullable
+    private static Reflections scanReflections(MeteorAddon addon, Serializer serializer) {
         String pkg = addon.getPackage();
-        if (pkg == null || pkg.isBlank()) return;
-        reflections.add(new Reflections(pkg, Scanners.MethodsAnnotated, Scanners.SubTypes));
+        if (pkg == null || pkg.isBlank()) return null;
+        return scanOrCreateReflections(addon, serializer);
+    }
+
+    private static String checksum(MeteorAddon addon) throws IOException {
+        Adler32 hash = new Adler32();
+        byte[] buffer = new byte[8192];
+        int read;
+        for (Path rootPath : addon.getModContainer().getRootPaths()) {
+            try (InputStream is = Files.newInputStream(rootPath)) {
+                while ((read = is.read(buffer)) != -1) hash.update(buffer, 0, read);
+            }
+        }
+        return Long.toHexString(hash.getValue());
     }
 
     public static <T extends IRegisterable> void initRegisterable(Class<T> registerableClass, Consumer<T> registrationCallback) {
-        for (Reflections reflection : reflections) {
-            Set<Class<? extends T>> initTasks = reflection.getSubTypesOf(registerableClass);
-            if (initTasks == null) return;
-            Set<Class<? extends T>> allTasks = new ReferenceOpenHashSet<>(initTasks);
+        long timestamp = System.nanoTime();
 
-            for (Iterator<Class<? extends T>> it; (it = initTasks.iterator()).hasNext();) {
-                Class<? extends T> clazz = it.next();
-                if (clazz.isAnnotationPresent(PathingDependant.class) && !PathManagers.isPresent()) {
+        Set<Class<? extends T>> initTasks = reflections.getSubTypesOf(registerableClass);
+        if (initTasks == null) return;
+        Set<Class<? extends T>> allTasks = new ReferenceOpenHashSet<>(initTasks);
+
+        for (Iterator<Class<? extends T>> it; (it = initTasks.iterator()).hasNext();) {
+            Class<? extends T> clazz = it.next();
+            if (clazz.isAnnotationPresent(PathingDependant.class) && !PathManagers.isPresent()) {
+                it.remove();
+                allTasks.remove(clazz);
+                continue;
+            }
+            ModDependant modDependant;
+            if ((modDependant = clazz.getAnnotation(ModDependant.class)) != null) {
+                if (checkDependencies(modDependant)) {
                     it.remove();
                     allTasks.remove(clazz);
                     continue;
                 }
-                ModDependant modDependant;
-                if ((modDependant = clazz.getAnnotation(ModDependant.class)) != null) {
-                    if (checkDependencies(modDependant)) {
-                        it.remove();
-                        allTasks.remove(clazz);
-                        continue;
-                    }
-                }
-                reflectInitRegisterable(clazz, initTasks, allTasks, registrationCallback);
             }
+            reflectInitRegisterable(clazz, initTasks, allTasks, registrationCallback);
         }
+
+        timestamp = System.nanoTime() - timestamp;
+
+        MeteorClient.LOG.info("Registerable '%s' initialization took %.3f ms".formatted(registerableClass.getSimpleName(), timestamp / 1000000d));
     }
 
     private static <T extends IRegisterable> void reflectInitRegisterable(Class<? extends T> registerableClass, Set<Class<? extends T>> left, Set<Class<? extends T>> all, Consumer<T> registrationCallback) {
@@ -113,16 +185,14 @@ public class ReflectInit {
     }
 
     public static void init(Class<? extends Annotation> annotation) {
-        for (Reflections reflection : reflections) {
-            Set<Method> initTasks = reflection.getMethodsAnnotatedWith(annotation);
-            if (initTasks == null) return;
+        Set<Method> initTasks = reflections.getMethodsAnnotatedWith(annotation);
+        if (initTasks == null) return;
 
-            Map<Class<?>, List<Method>> byClass = initTasks.stream().collect(Collectors.groupingBy(Method::getDeclaringClass));
-            Set<Method> left = new HashSet<>(initTasks);
+        Map<Class<?>, List<Method>> byClass = initTasks.stream().collect(Collectors.groupingBy(Method::getDeclaringClass));
+        Set<Method> left = new HashSet<>(initTasks);
 
-            for (Method m; (m = left.stream().findAny().orElse(null)) != null;) {
-                reflectInit(m, annotation, left, byClass);
-            }
+        for (Method m; (m = left.stream().findAny().orElse(null)) != null;) {
+            reflectInit(m, annotation, left, byClass);
         }
     }
 

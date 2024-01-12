@@ -6,10 +6,15 @@
 package meteordevelopment.meteorclient.addons;
 
 import meteordevelopment.meteorclient.utils.render.color.Color;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 
 public abstract class MeteorAddon {
     /** This field is automatically assigned from fabric.mod.json file. */
     public String name;
+
+    /** This field is automatically assigned from fabric.mod.json file. */
+    public String id;
 
     /** This field is automatically assigned from fabric.mod.json file. */
     public String[] authors;
@@ -33,5 +38,9 @@ public abstract class MeteorAddon {
 
     public String getCommit() {
         return null;
+    }
+
+    public ModContainer getModContainer() {
+        return FabricLoader.getInstance().getModContainer(id).orElseThrow();
     }
 }

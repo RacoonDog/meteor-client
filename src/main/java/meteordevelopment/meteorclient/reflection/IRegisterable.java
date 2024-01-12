@@ -5,8 +5,6 @@
 
 package meteordevelopment.meteorclient.reflection;
 
-import meteordevelopment.meteorclient.reflection.ReflectInit;
-
 import java.util.function.Consumer;
 
 /**

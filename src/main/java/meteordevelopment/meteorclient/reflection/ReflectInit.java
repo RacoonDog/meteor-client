@@ -5,18 +5,21 @@
 
 package meteordevelopment.meteorclient.reflection;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.pathing.PathManagers;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
+import net.fabricmc.loader.api.metadata.ModOrigin;
 import org.jetbrains.annotations.Nullable;
 import org.reflections.Reflections;
 import org.reflections.ReflectionsException;
 import org.reflections.scanners.Scanners;
-import org.reflections.serializers.JsonSerializer;
-import org.reflections.serializers.Serializer;
 
 import java.io.*;
 import java.lang.annotation.Annotation;
@@ -30,21 +33,21 @@ import java.util.stream.Collectors;
 import java.util.zip.Adler32;
 
 public class ReflectInit {
-    private static Reflections reflections;
     private static final File CACHE = new File(MeteorClient.FOLDER, "reflections-cache");
+    private static Reflections reflections;
+
+    /* Create Reflections */
 
     public static void registerPackages() {
         if (!CACHE.exists()) CACHE.mkdir();
 
-        long timestamp = System.nanoTime();
-
-        Serializer serializer = new JsonSerializer();
-
-        Reflections meteorReflections = scanOrCreateReflections(MeteorClient.ADDON, serializer);
+        Gson gson = new GsonBuilder().create();
+        Map<ModContainer, String> checksumCache = new Reference2ObjectOpenHashMap<>();
+        Reflections meteorReflections = getOrCreateReflections(MeteorClient.ADDON, gson, checksumCache);
 
         for (MeteorAddon addon : AddonManager.ADDONS) {
             try {
-                Reflections addonReflections = scanReflections(addon, serializer);
+                Reflections addonReflections = getReflections(addon, gson, checksumCache);
                 if (addonReflections != null) meteorReflections.merge(addonReflections);
             } catch (AbstractMethodError e) {
                 throw new RuntimeException("Addon \"%s\" is too old and cannot be ran.".formatted(addon.name), e);
@@ -52,35 +55,33 @@ public class ReflectInit {
         }
 
         reflections = meteorReflections;
-
-        timestamp = System.nanoTime() - timestamp;
-
-        MeteorClient.LOG.info("ReflectInit scan took %.3f ms".formatted(timestamp / 1000000d));
     }
 
-    private static Reflections scanOrCreateReflections(MeteorAddon addon, Serializer serializer) {
-        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+    private static Reflections getOrCreateReflections(MeteorAddon addon, Gson gson, Map<ModContainer, String> checksumCache) {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment() && addon.getModContainer().getOrigin().getKind() != ModOrigin.Kind.UNKNOWN) {
             try {
                 File cacheFile = new File(CACHE, addon.id + "-reflections.json");
                 File checksumFile = new File(CACHE, addon.id + ".checksum");
-                String checksum = checksum(addon);
+                String checksum = checksum(addon, checksumCache);
 
                 if (cacheFile.exists() && checksumFile.exists()) {
                     try (BufferedReader reader = new BufferedReader(new FileReader(checksumFile))) {
                         if (checksum.equals(reader.readLine())) {
                             try (FileInputStream inputStream = new FileInputStream(cacheFile)) {
-                                return serializer.read(inputStream);
+                                return gson.fromJson(new InputStreamReader(inputStream), Reflections.class);
                             }
                         }
                     }
                 }
 
-                try (FileWriter checksumWriter = new FileWriter(checksumFile)) {
+                Reflections addonReflections = createReflections(addon.getPackage());
+
+                try (FileWriter checksumWriter = new FileWriter(checksumFile);
+                     FileWriter cacheWriter = new FileWriter(cacheFile)) {
+                    cacheWriter.write(gson.toJson(addonReflections));
                     checksumWriter.write(checksum);
                 }
 
-                Reflections addonReflections = new Reflections(addon.getPackage(), Scanners.MethodsAnnotated, Scanners.SubTypes, Scanners.FieldsAnnotated);
-                addonReflections.save(cacheFile.getAbsolutePath(), serializer);
                 return addonReflections;
             } catch (IOException | ReflectionsException e) {
                 MeteorClient.LOG.error("Error loading reflections from addon '{}'", addon.name);
@@ -88,31 +89,47 @@ public class ReflectInit {
             }
         }
 
-        return new Reflections(addon.getPackage(), Scanners.MethodsAnnotated, Scanners.SubTypes, Scanners.FieldsAnnotated);
+        return createReflections(addon.getPackage());
+    }
+
+    private static Reflections createReflections(String pkg) {
+        return new Reflections(pkg, Scanners.MethodsAnnotated, Scanners.SubTypes, Scanners.FieldsAnnotated);
     }
 
     @Nullable
-    private static Reflections scanReflections(MeteorAddon addon, Serializer serializer) {
+    private static Reflections getReflections(MeteorAddon addon, Gson gson, Map<ModContainer, String> checksumCache) {
         String pkg = addon.getPackage();
         if (pkg == null || pkg.isBlank()) return null;
-        return scanOrCreateReflections(addon, serializer);
+        return getOrCreateReflections(addon, gson, checksumCache);
     }
 
-    private static String checksum(MeteorAddon addon) throws IOException {
-        Adler32 hash = new Adler32();
-        byte[] buffer = new byte[8192];
-        int read;
-        for (Path rootPath : addon.getModContainer().getRootPaths()) {
-            try (InputStream is = Files.newInputStream(rootPath)) {
-                while ((read = is.read(buffer)) != -1) hash.update(buffer, 0, read);
+    private static String checksum(MeteorAddon addon, Map<ModContainer, String> checksumCache) {
+        ModContainer mod = addon.getModContainer();
+        if (mod.getOrigin().getKind() == ModOrigin.Kind.NESTED) mod = getParent(mod);
+
+        return checksumCache.computeIfAbsent(mod, container -> {
+            Adler32 hash = new Adler32();
+            byte[] buffer = new byte[8192];
+
+            for (Path path : container.getOrigin().getPaths()) {
+                try (InputStream is = Files.newInputStream(path)) {
+                    int read;
+                    while ((read = is.read(buffer)) != -1) hash.update(buffer, 0, read);
+                } catch (IOException ignored) {}
             }
+
+            return Long.toHexString(hash.getValue());
+        });
+    }
+
+    private static ModContainer getParent(ModContainer container) {
+        while (container.getOrigin().getKind() == ModOrigin.Kind.NESTED) {
+            container = FabricLoader.getInstance().getModContainer(container.getOrigin().getParentModId()).orElseThrow();
         }
-        return Long.toHexString(hash.getValue());
+        return container;
     }
 
     public static <T extends IRegisterable> void initRegisterable(Class<T> registerableClass, Consumer<T> registrationCallback) {
-        long timestamp = System.nanoTime();
-
         Set<Class<? extends T>> initTasks = reflections.getSubTypesOf(registerableClass);
         if (initTasks == null) return;
         Set<Class<? extends T>> allTasks = new ReferenceOpenHashSet<>(initTasks);
@@ -134,10 +151,6 @@ public class ReflectInit {
             }
             reflectInitRegisterable(clazz, initTasks, allTasks, registrationCallback);
         }
-
-        timestamp = System.nanoTime() - timestamp;
-
-        MeteorClient.LOG.info("Registerable '%s' initialization took %.3f ms".formatted(registerableClass.getSimpleName(), timestamp / 1000000d));
     }
 
     private static <T extends IRegisterable> void reflectInitRegisterable(Class<? extends T> registerableClass, Set<Class<? extends T>> left, Set<Class<? extends T>> all, Consumer<T> registrationCallback) {

@@ -32,6 +32,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
     public Module module;
     public boolean lastWasVisible;
+    public Consumer<T> guiUpdateCallback;
 
     public Setting(String name, String description, T defaultValue, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
         this.name = name;
@@ -54,6 +55,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         if (!isValueValid(value)) return false;
         this.value = value;
         onChanged();
+        guiUpdateCallback();
         return true;
     }
 
@@ -64,6 +66,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public void reset() {
         resetImpl();
         onChanged();
+        guiUpdateCallback();
     }
 
     public T getDefaultValue() {
@@ -97,6 +100,10 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
     public boolean isVisible() {
         return visible == null || visible.isVisible();
+    }
+
+    public void guiUpdateCallback() {
+        if (guiUpdateCallback != null) guiUpdateCallback.accept(value);
     }
 
     protected abstract T parseImpl(String str);

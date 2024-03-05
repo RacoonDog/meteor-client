@@ -20,7 +20,6 @@ import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WMinus;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WPlus;
-import meteordevelopment.meteorclient.renderer.Fonts;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
@@ -158,8 +157,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
     private void boolW(WTable table, BoolSetting setting) {
         WCheckbox checkbox = table.add(theme.checkbox(setting.get())).expandCellX().widget();
         checkbox.action = () -> setting.set(checkbox.checked);
+        setting.guiUpdateCallback = bool -> checkbox.checked = bool;
 
-        reset(table, setting, () -> checkbox.checked = setting.get());
+        reset(table, setting);
     }
 
     private void intW(WTable table, IntSetting setting) {
@@ -168,8 +168,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         edit.action = () -> {
             if (!setting.set(edit.get())) edit.set(setting.get());
         };
+        setting.guiUpdateCallback = edit::set;
 
-        reset(table, setting, () -> edit.set(setting.get()));
+        reset(table, setting);
     }
 
     private void doubleW(WTable table, DoubleSetting setting) {
@@ -182,8 +183,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
         if (setting.onSliderRelease) edit.actionOnRelease = action;
         else edit.action = action;
+        setting.guiUpdateCallback = edit::set;
 
-        reset(table, setting, () -> edit.set(setting.get()));
+        reset(table, setting);
     }
 
     private void stringW(WTable table, StringSetting setting) {
@@ -193,8 +195,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
         WTextBox textBox = cell.expandX().widget();
         textBox.action = () -> setting.set(textBox.get());
+        setting.guiUpdateCallback = textBox::set;
 
-        reset(table, setting, () -> textBox.set(setting.get()));
+        reset(table, setting);
     }
 
     private void stringListW(WTable table, StringListSetting setting) {
@@ -205,22 +208,24 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
     private <T extends Enum<?>> void enumW(WTable table, EnumSetting<T> setting) {
         WDropdown<T> dropdown = table.add(theme.dropdown(setting.get())).expandCellX().widget();
         dropdown.action = () -> setting.set(dropdown.get());
+        setting.guiUpdateCallback = dropdown::set;
 
-        reset(table, setting, () -> dropdown.set(setting.get()));
+        reset(table, setting);
     }
 
     private void providedStringW(WTable table, ProvidedStringSetting setting) {
         WDropdown<String> dropdown = table.add(theme.dropdown(setting.supplier.get(), setting.get())).expandCellX().widget();
         dropdown.action = () -> setting.set(dropdown.get());
+        setting.guiUpdateCallback = dropdown::set;
 
-        reset(table, setting, () -> dropdown.set(setting.get()));
+        reset(table, setting);
     }
 
     private void genericW(WTable table, GenericSetting<?> setting) {
         WButton edit = table.add(theme.button(GuiRenderer.EDIT)).widget();
         edit.action = () -> mc.setScreen(setting.get().createScreen(theme));
 
-        reset(table, setting, null);
+        reset(table, setting);
     }
 
     private void colorW(WTable table, ColorSetting setting) {
@@ -230,11 +235,12 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
         WButton edit = list.add(theme.button(GuiRenderer.EDIT)).widget();
         edit.action = () -> mc.setScreen(new ColorSettingScreen(theme, setting));
+        setting.guiUpdateCallback = c -> quad.color = c;
 
-        reset(table, setting, () -> quad.color = setting.get());
+        reset(table, setting);
     }
 
-    private void keybindW(WTable table, KeybindSetting setting) {
+    private void keybindW(WTable table, KeybindSetting setting) { //todo make WKeybind mutable to allow propagation
         WHorizontalList list = table.add(theme.horizontalList()).expandX().widget();
 
         WKeybind keybind = list.add(theme.keybind(setting.get(), setting.getDefaultValue())).expandX().widget();
@@ -257,8 +263,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
             mc.setScreen(screen);
         };
+        setting.guiUpdateCallback = block -> item.set(block.asItem().getDefaultStack());
 
-        reset(table, setting, () -> item.set(setting.get().asItem().getDefaultStack()));
+        reset(table, setting);
     }
 
     private void blockPosW(WTable table, BlockPosSetting setting) {
@@ -267,8 +274,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         edit.actionOnRelease = () -> {
             if (!setting.set(edit.get())) edit.set(setting.get());
         };
+        setting.guiUpdateCallback = edit::set;
 
-        reset(table, setting, () -> edit.set(setting.get()));
+        reset(table, setting);
     }
 
     private void blockListW(WTable table, BlockListSetting setting) {
@@ -287,8 +295,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
             mc.setScreen(screen);
         };
+        setting.guiUpdateCallback = value -> item.set(value.getDefaultStack());
 
-        reset(table, setting, () -> item.set(setting.get().getDefaultStack()));
+        reset(table, setting);
     }
 
     private void itemListW(WTable table, ItemListSetting setting) {
@@ -339,7 +348,7 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         WButton button = table.add(theme.button(GuiRenderer.EDIT)).expandCellX().widget();
         button.action = () -> mc.setScreen(new BlockDataSettingScreen(theme, setting));
 
-        reset(table, setting, null);
+        reset(table, setting);
     }
 
     private void potionW(WTable table, PotionSetting setting) {
@@ -353,8 +362,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
             mc.setScreen(screen);
         };
+        setting.guiUpdateCallback = potion -> item.set(potion.potion);
 
-        reset(list, setting, () -> item.set(setting.get().potion));
+        reset(list, setting);
     }
 
     private void fontW(WTable table, FontFaceSetting setting) {
@@ -368,8 +378,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
             mc.setScreen(screen);
         };
+        setting.guiUpdateCallback = font -> label.set(setting.get().info.family());
 
-        reset(list, setting, () -> label.set(Fonts.DEFAULT_FONT.info.family()));
+        reset(list, setting);
     }
 
     private void colorListW(WTable table, ColorListSetting setting) {
@@ -383,15 +394,14 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         add.action = () -> {
             setting.get().add(new SettingColor());
             setting.onChanged();
-
+            setting.guiUpdateCallback();
+        };
+        setting.guiUpdateCallback = v -> {
             t.clear();
             colorListWFill(t, setting);
         };
 
-        reset(tab, setting, () -> {
-            t.clear();
-            colorListWFill(t, setting);
-        });
+        reset(tab, setting);
     }
 
     private void colorListWFill(WTable t, ColorListSetting setting) {
@@ -437,11 +447,13 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         WDoubleEdit y = addVectorComponent(internal, "Y", setting.get().y, val -> setting.get().y = val, setting);
         WDoubleEdit z = addVectorComponent(internal, "Z", setting.get().z, val -> setting.get().z = val, setting);
 
-        reset(table, setting, () -> {
-            x.set(setting.get().x);
-            y.set(setting.get().y);
-            z.set(setting.get().z);
-        });
+        setting.guiUpdateCallback = vec -> {
+            x.set(vec.x);
+            y.set(vec.y);
+            z.set(vec.z);
+        };
+
+        reset(table, setting);
     }
 
     private WDoubleEdit addVectorComponent(WTable table, String label, double value, Consumer<Double> update, Vector3dSetting setting) {
@@ -475,15 +487,12 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
         if (addCount) c2.add(new WSelectedCountLabel(setting).color(theme.textSecondaryColor()));
 
-        reset(c, setting, null);
+        reset(c, setting);
     }
 
-    private void reset(WContainer c, Setting<?> setting, Runnable action) {
+    private void reset(WContainer c, Setting<?> setting) {
         WButton reset = c.add(theme.button(GuiRenderer.RESET)).widget();
-        reset.action = () -> {
-            setting.reset();
-            if (action != null) action.run();
-        };
+        reset.action = setting::reset;
     }
 
     private static class WSelectedCountLabel extends WMeteorLabel {

@@ -12,6 +12,7 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.Text;
 import org.joml.Matrix4f;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -84,6 +85,29 @@ public class VanillaTextRenderer implements TextRenderer {
         if (scaleIndividually) matrices.pop();
 
         color.a = preA;
+
+        if (!wasBuilding) end();
+        return (x2 - 1) * scale;
+    }
+
+    @Override
+    public double render(Text text, double x, double y, boolean shadow) {
+        boolean wasBuilding = building;
+        if (!wasBuilding) begin();
+
+        x += 0.5 * scale;
+        y += 0.5 * scale;
+
+        Matrix4f matrix = emptyMatrix;
+        if (scaleIndividually) {
+            matrices.push();
+            matrices.scale((float) scale, (float) scale, 1);
+            matrix = matrices.peek().getPositionMatrix();
+        }
+
+        double x2 = mc.textRenderer.draw(text, (float) (x / scale), (float) (y / scale), 0xFFFFFFFF, shadow, matrix, immediate, TextLayerType.NORMAL, 0, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
+        if (scaleIndividually) matrices.pop();
 
         if (!wasBuilding) end();
         return (x2 - 1) * scale;

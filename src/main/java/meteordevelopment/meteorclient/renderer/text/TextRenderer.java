@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.renderer.Fonts;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.Text;
 
 public interface TextRenderer {
     static TextRenderer get() {
@@ -32,6 +33,7 @@ public interface TextRenderer {
 
     double render(String text, double x, double y, Color color, boolean shadow);
     default double render(String text, double x, double y, Color color) { return render(text, x, y, color, false); }
+    double render(Text text, double x, double y, boolean shadow);
 
     boolean isBuilding();
 

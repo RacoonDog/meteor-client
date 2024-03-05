@@ -9,9 +9,14 @@ import meteordevelopment.meteorclient.renderer.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
+import org.apache.commons.lang3.mutable.MutableDouble;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class CustomTextRenderer implements TextRenderer {
     public static final Color SHADOW_COLOR = new Color(60, 60, 60, 180);
@@ -109,6 +114,41 @@ public class CustomTextRenderer implements TextRenderer {
 
         if (!wasBuilding) end();
         return width;
+    }
+
+    @Override
+    public double render(Text text, double x, double y, boolean shadow) {
+        boolean wasBuilding = building;
+        if (!wasBuilding) begin();
+
+        double width;
+        if (shadow) {
+            width = font.render(mesh, text.getString(), x + fontScale * scale, y + fontScale * scale, SHADOW_COLOR, scale);
+            render(text, x, y, new MutableDouble());
+        } else {
+            MutableDouble mutableWidth = new MutableDouble();
+            render(text, x, y, mutableWidth);
+            width = mutableWidth.doubleValue();
+        }
+
+        if (!wasBuilding) end();
+        return width;
+    }
+
+    private void render(Text text, double x, double y, MutableDouble mutableWidth) {
+        Color color = new Color();
+        text.visit((style, string) -> {
+            TextColor textColor = style.getColor();
+            int packedColor = textColor == null ? 0xFFFFFF : textColor.getRgb();
+            color.set(
+                Color.toRGBAR(packedColor),
+                Color.toRGBAG(packedColor),
+                Color.toRGBAB(packedColor),
+                255
+            );
+            mutableWidth.add(font.render(mesh, string, x + mutableWidth.doubleValue(), y, color, scale));
+            return Optional.empty();
+        }, Style.EMPTY);
     }
 
     @Override

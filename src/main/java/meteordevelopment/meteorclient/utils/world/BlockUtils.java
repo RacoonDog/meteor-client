@@ -27,11 +27,14 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.WorldChunk;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -326,5 +329,29 @@ public class BlockUtils {
         }
 
         return speed;
+    }
+
+    /**
+     * Taken from <a href="https://github.com/CaffeineMC/lithium-fabric/blob/develop/src/main/java/me/jellysquid/mods/lithium/mixin/world/inline_block_access/WorldMixin.java">Lithium</a>
+     */
+    public static BlockState getBlockState(int x, int y, int z) {
+        WorldChunk chunk = mc.world.getChunk(ChunkSectionPos.getSectionCoord(x), ChunkSectionPos.getSectionCoord(z));
+        return getBlockState(chunk, x, y, z);
+    }
+
+    public static BlockState getBlockState(WorldChunk chunk, int x, int y, int z) {
+        ChunkSection[] sections = chunk.getSectionArray();
+
+        int chunkY = chunk.getSectionIndex(y);
+        if (chunkY < 0 || chunkY >= sections.length) {
+            return Blocks.VOID_AIR.getDefaultState();
+        }
+
+        ChunkSection section = sections[chunkY];
+        if (section.isEmpty()) {
+            return Blocks.AIR.getDefaultState();
+        }
+
+        return section.getBlockState(x & 15, y & 15, z & 15);
     }
 }

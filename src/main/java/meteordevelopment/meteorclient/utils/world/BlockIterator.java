@@ -13,17 +13,23 @@ import meteordevelopment.meteorclient.utils.misc.Pool;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.collection.EmptyPaletteStorage;
+import net.minecraft.util.collection.PaletteStorage;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.world.chunk.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class BlockIterator {
+    private static final int PREPROCESS_THRESHOLD = 512;
+    private static final BlockState EMPTY_STATE = Blocks.AIR.getDefaultState();
+
     private static final Pool<Callback> callbackPool = new Pool<>(Callback::new);
     private static final List<Callback> callbacks = new ArrayList<>();
 
@@ -105,48 +111,140 @@ public class BlockIterator {
             int chunkY1 = Math.max(chunkEdgeY, y1);
             int chunkY2 = Math.min(chunkEdgeY + 15, y2);
 
-            sectionIterator(chunk, cy, x1, chunkY1, z1, x2, chunkY2, z2);
+            sectionIterator(chunk, cy, x1, chunkY1, z1, x2, chunkY2, z2, cx, cz);
         }
     }
 
     private static void sectionIterator(int cx, int cy, int cz, int x1, int y1, int z1, int x2, int y2, int z2) {
-        sectionIterator(mc.world.getChunk(cx, cz), cy, x1, y1, z1, x2, y2, z2);
+        sectionIterator(mc.world.getChunk(cx, cz), cy, x1, y1, z1, x2, y2, z2, cx, cz);
     }
 
-    private static void sectionIterator(WorldChunk chunk, int cy, int x1, int y1, int z1, int x2, int y2, int z2) {
+    private static void sectionIterator(WorldChunk chunk, int cy, int x1, int y1, int z1, int x2, int y2, int z2, int cx, int cz) {
         int sIndex = chunk.sectionCoordToIndex(cy);
         if (sIndex < 0 || sIndex >= chunk.getSectionArray().length) return;
         ChunkSection section = chunk.getSection(sIndex);
-        if (section.isEmpty()) return;
 
-        for (int y = y1; y <= y2; y++) {
-            int ey = y & 15;
-            blockPos.setY(y);
-            int dy = Math.abs(y - py);
+        PalettedContainer<BlockState> container = section.getBlockStateContainer();
+        Palette<BlockState> palette = container.data.palette();
+        PaletteStorage storage = container.data.storage();
 
-            for (int x = x1; x <= x2; x++) {
-                int ex = x & 15;
-                blockPos.setX(x);
-                int dx = Math.abs(x - px);
+        if (section.isEmpty() || storage instanceof EmptyPaletteStorage) {
+            singularPaletteSectionIterator(EMPTY_STATE, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+        } if (palette instanceof SingularPalette<BlockState> singularPalette) {
+            singularPaletteSectionIterator(singularPalette.get(0), x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+        } else {
+            int dx = x2 - x1;
+            int dy = y2 - y1;
+            int dz = z2 - z1;
+            int edgeBits = container.paletteProvider.edgeBits;
+
+            if (dx * dy * dz >= PREPROCESS_THRESHOLD) {
+                preProcessSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+            } else {
+                immediateSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+            }
+        }
+    }
+
+    private static void singularPaletteSectionIterator(BlockState blockState, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
+        BlockCache blockCache = (x, y, z) -> isWithin(x, y, z, x1, y1, z1, x2, y2, z2) ? blockState : fallbackGetBlockState(chunk, x, y, z, cx, cz);
+
+        for (int x = x1; x <= x2; x++) {
+            blockPos.setX(x);
+            int dx = Math.abs(x - px);
+
+            for (int y = y1; y <= y2; y++) {
+                blockPos.setY(y);
+                int dy = Math.abs(y - py);
 
                 for (int z = z1; z <= z2; z++) {
-                    BlockState blockState = section.getBlockState(ex, ey, z & 15);
                     blockPos.setZ(z);
                     int dz = Math.abs(z - pz);
 
-                    if (callbacks(dx, dy, dz, blockState)) return;
+                    if (callbacks(dx, dy, dz, blockState, blockCache)) return;
                 }
             }
         }
     }
 
-    private static boolean callbacks(int dx, int dy, int dz, BlockState blockState) {
+    private static void preProcessSectionIterator(Palette<BlockState> palette, PaletteStorage storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
+        int[] array = new int[storage.getSize()];
+        storage.method_39892(array);
+
+        BlockCache blockCache = (x, y, z) -> isWithin(x, y, z, x1, y1, z1, x2, y2, z2) ? palette.get(array[computeIndex(edgeBits, x & 15, y & 15, z & 15)]) : fallbackGetBlockState(chunk, x, y, z, cx, cz);
+
+        for (int x = x1; x <= x2; x++) {
+            int ex = x & 15;
+            blockPos.setX(x);
+            int dx = Math.abs(x - px);
+
+            for (int z = z1; z <= z2; z++) {
+                int ez = z & 15;
+                blockPos.setZ(z);
+                int dz = Math.abs(z - pz);
+
+                for (int y = y1; y <= y2; y++) {
+                    blockPos.setY(y);
+                    int dy = Math.abs(y - py);
+
+                    int index = computeIndex(edgeBits, ex, y & 15, ez);
+                    BlockState blockState = palette.get(array[index]);
+
+                    if (callbacks(dx, dy, dz, blockState, blockCache)) return;
+                }
+            }
+        }
+    }
+
+    private static void immediateSectionIterator(Palette<BlockState> palette, PaletteStorage storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
+        BlockCache blockCache = (x, y, z) -> isWithin(x, y, z, x1, y1, z1, x2, y2, z2) ? palette.get(storage.get(computeIndex(edgeBits, x & 15, y & 15, z & 15))) : fallbackGetBlockState(chunk, x, y, z, cx, cz);
+
+        for (int x = x1; x <= x2; x++) {
+            int ex = x & 15;
+            blockPos.setX(x);
+            int dx = Math.abs(x - px);
+
+            for (int z = z1; z <= z2; z++) {
+                int ez = z & 15;
+                blockPos.setZ(z);
+                int dz = Math.abs(z - pz);
+
+                for (int y = y1; y <= y2; y++) {
+                    blockPos.setY(y);
+                    int dy = Math.abs(y - py);
+
+                    int index = computeIndex(edgeBits, ex, y & 15, ez);
+                    BlockState blockState = palette.get(storage.get(index));
+
+                    if (callbacks(dx, dy, dz, blockState, blockCache)) return;
+                }
+            }
+        }
+    }
+
+    private static int computeIndex(int edgeBits, int x, int y, int z) {
+        return (y << edgeBits | z) << edgeBits | x;
+    }
+
+    private static boolean isWithin(int x, int y, int z, int x1, int y1, int z1, int x2, int y2, int z2) {
+        return x >= x1 && x <= x2 && y >= y1 && y <= y2 && z >= z1 && z <= z2;
+    }
+
+    private static BlockState fallbackGetBlockState(WorldChunk chunk, int x, int y, int z, int cx, int cz) {
+        if (ChunkSectionPos.getSectionCoord(x) == cx && ChunkSectionPos.getSectionCoord(z) == cz) {
+            return BlockUtils.getBlockState(chunk, x, y, z);
+        } else {
+            return BlockUtils.getBlockState(x, y, z);
+        }
+    }
+
+    private static boolean callbacks(int dx, int dy, int dz, BlockState blockState, BlockCache blockCache) {
         for (int i = 0; i < callbacks.size(); i++) {
             Callback callback = callbacks.get(i);
 
             if (dy <= callback.vRadius && Math.max(dx, dz) <= callback.hRadius) {
                 disableCurrent = false;
-                callback.function.accept(blockPos, blockState);
+                callback.function.accept(blockPos, blockState, blockCache);
                 if (disableCurrent) {
                     callbacks.remove(i--);
                     if (callbacks.isEmpty()) return true;
@@ -157,7 +255,7 @@ public class BlockIterator {
         return false;
     }
 
-    public static void register(int horizontalRadius, int verticalRadius, BiConsumer<BlockPos, BlockState> function) {
+    public static void register(int horizontalRadius, int verticalRadius, CallbackFunction function) {
         hRadius = Math.max(hRadius, horizontalRadius);
         vRadius = Math.max(vRadius, verticalRadius);
 
@@ -179,7 +277,21 @@ public class BlockIterator {
     }
 
     private static class Callback {
-        public BiConsumer<BlockPos, BlockState> function;
+        public CallbackFunction function;
         public int hRadius, vRadius;
+    }
+
+    @FunctionalInterface
+    public interface BlockCache {
+        BlockState getBlockState(int x, int y, int z);
+
+        default BlockState getBlockState(Vec3i pos) {
+            return getBlockState(pos.getX(), pos.getY(), pos.getZ());
+        }
+    }
+
+    @FunctionalInterface
+    public interface CallbackFunction {
+        void accept(BlockPos.Mutable blockPos, BlockState blockState, BlockCache blockCache);
     }
 }

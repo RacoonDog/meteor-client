@@ -96,7 +96,7 @@ public class SpawnProofer extends Module {
         // Find spawn locations
         for (BlockPos.Mutable blockPos : spawns) spawnPool.free(blockPos);
         spawns.clear();
-        BlockIterator.register(range.get(), range.get(), (blockPos, blockState) -> {
+        BlockIterator.register(range.get(), range.get(), (blockPos, blockState, blockCache) -> { //im too lazy to do this one im gonna be honest
             BlockUtils.MobSpawn spawn = BlockUtils.isValidMobSpawn(blockPos, newMobSpawnLightLevel.get());
 
             if ((spawn == BlockUtils.MobSpawn.Always && (mode.get() == Mode.Always || mode.get() == Mode.Both)) ||

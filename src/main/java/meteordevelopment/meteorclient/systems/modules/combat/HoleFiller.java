@@ -246,8 +246,8 @@ public class HoleFiller extends Module {
         FindItemResult block = InvUtils.findInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())));
         if (!block.found()) return;
 
-        BlockIterator.register(searchRadius.get(), searchRadius.get(), (blockPos, blockState) -> {
-            if (!validHole(blockPos)) return;
+        BlockIterator.register(searchRadius.get(), searchRadius.get(), (blockPos, blockState, blockCache) -> {
+            if (!validHole(blockPos, blockCache)) return;
 
             int bedrock = 0, obsidian = 0;
             Direction air = null;
@@ -255,16 +255,17 @@ public class HoleFiller extends Module {
             for (Direction direction : Direction.values()) {
                 if (direction == Direction.UP) continue;
 
-                BlockState state = mc.world.getBlockState(blockPos.offset(direction));
+                BlockPos offset = blockPos.offset(direction);
+                BlockState state = blockCache.getBlockState(offset);
 
                 if (state.getBlock() == Blocks.BEDROCK) bedrock++;
                 else if (state.getBlock() == Blocks.OBSIDIAN) obsidian++;
                 else if (direction == Direction.DOWN) return;
-                else if (validHole(blockPos.offset(direction)) && air == null) {
+                else if (validHole(offset, blockCache) && air == null) {
                     for (Direction dir : Direction.values()) {
                         if (dir == direction.getOpposite() || dir == Direction.UP) continue;
 
-                        BlockState blockState1 = mc.world.getBlockState(blockPos.offset(direction).offset(dir));
+                        BlockState blockState1 = blockCache.getBlockState(offset.offset(dir));
 
                         if (blockState1.getBlock() == Blocks.BEDROCK) bedrock++;
                         else if (blockState1.getBlock() == Blocks.OBSIDIAN) obsidian++;
@@ -314,17 +315,14 @@ public class HoleFiller extends Module {
         }
     }
 
-    private boolean validHole(BlockPos pos) {
-        testPos.set(pos);
+    private boolean validHole(BlockPos pos, BlockIterator.BlockCache blockCache) {
+        if (mc.player.getBlockPos().equals(pos)) return false;
+        if (distance(mc.player, pos, false) > placeRange.get()) return false;
+        BlockState blockState = blockCache.getBlockState(pos);
+        if (blockState.getBlock() == Blocks.COBWEB) return false;
 
-        if (mc.player.getBlockPos().equals(testPos)) return false;
-        if (distance(mc.player, testPos, false) > placeRange.get()) return false;
-        if (mc.world.getBlockState(testPos).getBlock() == Blocks.COBWEB) return false;
-
-        if (((AbstractBlockAccessor) mc.world.getBlockState(testPos).getBlock()).isCollidable()) return false;
-        testPos.add(0, 1, 0);
-        if (((AbstractBlockAccessor) mc.world.getBlockState(testPos).getBlock()).isCollidable()) return false;
-        testPos.add(0, -1, 0);
+        if (((AbstractBlockAccessor) blockState.getBlock()).isCollidable()) return false;
+        if (((AbstractBlockAccessor) blockCache.getBlockState(pos.getX(), pos.getY() + 1, pos.getZ()).getBlock()).isCollidable()) return false;
 
         ((IBox) box).set(pos);
         if (!mc.world.getOtherEntities(null, box, entity
@@ -335,8 +333,8 @@ public class HoleFiller extends Module {
         if (!smart.get() || forceFill.get().isPressed()) return true;
 
         return targets.stream().anyMatch(target
-            -> target.getY() > testPos.getY()
-            && (distance(target, testPos, true) < feetRange.get()));
+            -> target.getY() > pos.getY()
+            && (distance(target, pos, true) < feetRange.get()));
     }
 
     private void setTargets() {
@@ -391,12 +389,9 @@ public class HoleFiller extends Module {
         return Math.sqrt(i * i + j * j + k * k);
     }
 
-    private static class Hole {
-        private final BlockPos.Mutable blockPos = new BlockPos.Mutable();
-        private final byte exclude;
-
-        public Hole(BlockPos blockPos, byte exclude) {
-            this.blockPos.set(blockPos);
+    private record Hole(BlockPos blockPos, byte exclude) {
+        private Hole(BlockPos blockPos, byte exclude) {
+            this.blockPos = blockPos.toImmutable();
             this.exclude = exclude;
         }
     }

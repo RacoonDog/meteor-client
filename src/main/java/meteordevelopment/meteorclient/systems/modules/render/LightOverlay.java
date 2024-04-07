@@ -93,7 +93,7 @@ public class LightOverlay extends Module {
         for (Cross cross : crosses) crossPool.free(cross);
         crosses.clear();
 
-        BlockIterator.register(horizontalRange.get(), verticalRange.get(), (blockPos, blockState) -> {
+        BlockIterator.register(horizontalRange.get(), verticalRange.get(), (blockPos, blockState, blockCache) -> { //im too lazy to do this one im gonna be honest
             switch (BlockUtils.isValidMobSpawn(blockPos, newMobSpawnLightLevel.get())) {
                 case Never:
                     break;

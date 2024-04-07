@@ -911,18 +911,16 @@ public class CrystalAura extends Module {
         AtomicBoolean isSupport = new AtomicBoolean(support.get() != SupportMode.Disabled);
 
         // Find best position to place the crystal on
-        BlockIterator.register((int) Math.ceil(placeRange.get()), (int) Math.ceil(placeRange.get()), (bp, blockState) -> {
+        BlockIterator.register((int) Math.ceil(placeRange.get()), (int) Math.ceil(placeRange.get()), (bp, blockState, blockCache) -> {
             // Check if its bedrock or obsidian and return if isSupport is false
             boolean hasBlock = blockState.isOf(Blocks.BEDROCK) || blockState.isOf(Blocks.OBSIDIAN);
             if (!hasBlock && (!isSupport.get() || !blockState.getMaterial().isReplaceable())) return;
 
             // Check if there is air on top
-            blockPos.set(bp.getX(), bp.getY() + 1, bp.getZ());
-            if (!mc.world.getBlockState(blockPos).isAir()) return;
+            if (blockCache.getBlockState(bp.getX(), bp.getY() + 1, bp.getZ()).isAir()) return;
 
             if (placement112.get()) {
-                blockPos.move(0, 1, 0);
-                if (!mc.world.getBlockState(blockPos).isAir()) return;
+                if (!blockCache.getBlockState(bp.getX(), bp.getY() + 2, bp.getZ()).isAir()) return;
             }
 
             // Check range

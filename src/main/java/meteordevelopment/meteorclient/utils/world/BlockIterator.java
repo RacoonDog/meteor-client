@@ -27,7 +27,7 @@ import java.util.List;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class BlockIterator {
-    private static final int PREPROCESS_THRESHOLD = 512;
+    private static final int UNPACKING_THRESHOLD = 512;
     private static final BlockState EMPTY_STATE = Blocks.AIR.getDefaultState();
 
     private static final Pool<Callback> callbackPool = new Pool<>(Callback::new);
@@ -138,8 +138,8 @@ public class BlockIterator {
             int dz = z2 - z1;
             int edgeBits = container.paletteProvider.edgeBits;
 
-            if (dx * dy * dz >= PREPROCESS_THRESHOLD) {
-                preProcessSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+            if (dx * dy * dz >= UNPACKING_THRESHOLD) {
+                unpackingSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
             } else {
                 immediateSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
             }
@@ -167,7 +167,7 @@ public class BlockIterator {
         }
     }
 
-    private static void preProcessSectionIterator(Palette<BlockState> palette, PaletteStorage storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
+    private static void unpackingSectionIterator(Palette<BlockState> palette, PaletteStorage storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
         int[] array = new int[storage.getSize()];
         storage.method_39892(array);
 

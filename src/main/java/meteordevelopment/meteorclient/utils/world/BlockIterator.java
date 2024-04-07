@@ -239,7 +239,7 @@ public class BlockIterator {
     }
 
     private static boolean callbacks(int dx, int dy, int dz, BlockState blockState, BlockCache blockCache) {
-        for (int i = 0; i < callbacks.size(); i++) {
+        for (int i = 0, size = callbacks.size(); i < size; i++) {
             Callback callback = callbacks.get(i);
 
             if (dy <= callback.vRadius && Math.max(dx, dz) <= callback.hRadius) {
@@ -247,7 +247,7 @@ public class BlockIterator {
                 callback.function.accept(blockPos, blockState, blockCache);
                 if (disableCurrent) {
                     callbacks.remove(i--);
-                    if (callbacks.isEmpty()) return true;
+                    if (--size == 0) return true;
                 }
             }
         }

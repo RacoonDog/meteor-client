@@ -7,6 +7,7 @@ package meteordevelopment.meteorclient.utils.world;
 
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.mixininterface.IPackedIntegerArray;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.Pool;
@@ -15,6 +16,7 @@ import meteordevelopment.orbit.EventPriority;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.collection.EmptyPaletteStorage;
+import net.minecraft.util.collection.PackedIntegerArray;
 import net.minecraft.util.collection.PaletteStorage;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -27,7 +29,7 @@ import java.util.List;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class BlockIterator {
-    private static final int UNPACKING_THRESHOLD = 512;
+    private static final double UNPACKING_THRESHOLD = 0.5d;
     private static final BlockState EMPTY_STATE = Blocks.AIR.getDefaultState();
 
     private static final Pool<Callback> callbackPool = new Pool<>(Callback::new);
@@ -104,9 +106,11 @@ public class BlockIterator {
     }
 
     private static void chunkIterator(int cx, int cz, int cy1, int cy2, int x1, int y1, int z1, int x2, int y2, int z2) {
-        WorldChunk chunk = mc.world.getChunk(cx, cz);
+        WorldChunk chunk = (WorldChunk) mc.world.getChunk(cx, cz, ChunkStatus.FULL, false);
 
-        for (int cy = cy1; cy < cy2; cy++) {
+        if (chunk == null) return;
+
+        for (int cy = cy1; cy <= cy2; cy++) {
             int chunkEdgeY = cy << 4;
             int chunkY1 = Math.max(chunkEdgeY, y1);
             int chunkY2 = Math.min(chunkEdgeY + 15, y2);
@@ -133,13 +137,15 @@ public class BlockIterator {
         } if (palette instanceof SingularPalette<BlockState> singularPalette) {
             singularPaletteSectionIterator(singularPalette.get(0), x1, y1, z1, x2, y2, z2, chunk, cx, cz);
         } else {
-            int dx = x2 - x1;
-            int dy = y2 - y1;
-            int dz = z2 - z1;
             int edgeBits = container.paletteProvider.edgeBits;
 
-            if (dx * dy * dz >= UNPACKING_THRESHOLD) {
-                unpackingSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
+            int dx = x2 - x1;
+            int dz = z2 - z1;
+
+            double ratio = (dx * dz) / (16 * 16d); // this is stupid -crosby
+
+            if (storage instanceof PackedIntegerArray pia && ratio > UNPACKING_THRESHOLD) {
+                unpackingSectionIterator(palette, pia, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
             } else {
                 immediateSectionIterator(palette, storage, edgeBits, x1, y1, z1, x2, y2, z2, chunk, cx, cz);
             }
@@ -167,11 +173,25 @@ public class BlockIterator {
         }
     }
 
-    private static void unpackingSectionIterator(Palette<BlockState> palette, PaletteStorage storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
+    private static void unpackingSectionIterator(Palette<BlockState> palette, PackedIntegerArray storage, int edgeBits, int x1, int y1, int z1, int x2, int y2, int z2, WorldChunk chunk, int cx, int cz) {
         int[] array = new int[storage.getSize()];
-        storage.method_39892(array);
+        int startIndex = computeIndex(edgeBits, x1 & 15, y1 & 15, z1 & 15);
+        int endIndex = computeIndex(edgeBits, x2 & 15, y2 & 15, z2 & 15);
 
-        BlockCache blockCache = (x, y, z) -> isWithin(x, y, z, x1, y1, z1, x2, y2, z2) ? palette.get(array[computeIndex(edgeBits, x & 15, y & 15, z & 15)]) : fallbackGetBlockState(chunk, x, y, z, cx, cz);
+        ((IPackedIntegerArray) storage).meteor$unpackPartially(
+            array,
+            startIndex,
+            endIndex
+        );
+
+        BlockCache blockCache = (x, y, z) -> {
+            if (isWithin(x, y, z, x1, y1, z1, x2, y2, z2)) {
+                int index = computeIndex(edgeBits, x & 15, y & 15, z & 15);
+                return palette.get(array[index]);
+            } else {
+                return fallbackGetBlockState(chunk, x, y, z, cx, cz);
+            }
+        };
 
         for (int x = x1; x <= x2; x++) {
             int ex = x & 15;

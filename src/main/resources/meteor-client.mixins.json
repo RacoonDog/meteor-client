@@ -113,6 +113,7 @@
     "MobSpawnerBlockEntityRendererMixin",
     "MouseMixin",
     "MultiplayerScreenMixin",
+    "PackedIntegerArrayMixin",
     "PacketByteBufMixin",
     "PacketInflaterMixin",
     "ParticleManagerMixin",

@@ -9,7 +9,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
-import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
@@ -22,12 +21,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.concurrent.Future;
 
-public class Sphere2dMarker extends BaseMarker {
-    public static final String type = "Sphere-2D";
+public class CylinderMarker extends BaseMarker {
+    public static final String type = "Cylinder";
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgRender = settings.createGroup("Render");
-    private final SettingGroup sgKeybinding = settings.createGroup("Keybinding");
 
     private final Setting<BlockPos> center = sgGeneral.add(new BlockPosSetting.Builder()
         .name("center")
@@ -45,13 +43,12 @@ public class Sphere2dMarker extends BaseMarker {
         .build()
     );
 
-    private final Setting<Integer> layer = sgGeneral.add(new IntSetting.Builder()
-        .name("layer")
-        .description("Which layer to render")
-        .defaultValue(0)
-        .min(0)
-        .noSlider()
-        .onChanged(l -> dirty = true)
+    private final Setting<Integer> height = sgGeneral.add(new IntSetting.Builder()
+        .name("height")
+        .description("The height of the cylinder")
+        .defaultValue(10)
+        .min(1)
+        .sliderRange(1, 20)
         .build()
     );
 
@@ -103,33 +100,11 @@ public class Sphere2dMarker extends BaseMarker {
         .build()
     );
 
-    // Keybinding
-
-    @SuppressWarnings("unused")
-    private final Setting<Keybind> nextLayerKey = sgKeybinding.add(new KeybindSetting.Builder()
-        .name("next-layer-keybind")
-        .description("Keybind to increment layer")
-        .action(() -> {
-            if (isVisible() && layer.get() < radius.get() * 2) layer.set(layer.get() + 1);
-        })
-        .build()
-    );
-
-    @SuppressWarnings("unused")
-    private final Setting<Keybind> prevLayerKey = sgKeybinding.add(new KeybindSetting.Builder()
-        .name("prev-layer-keybind")
-        .description("Keybind to increment layer")
-        .action(() -> {
-            if (isVisible()) layer.set(layer.get() - 1);
-        })
-        .build()
-    );
-
     private volatile List<RenderBlock> blocks = List.of();
     private volatile @Nullable Future<?> task = null;
     private boolean dirty = true;
 
-    public Sphere2dMarker() {
+    public CylinderMarker() {
         super(type);
     }
 
@@ -154,7 +129,7 @@ public class Sphere2dMarker extends BaseMarker {
 
         for (RenderBlock block : blocks) {
             if (!limitRenderRange.get() || PlayerUtils.isWithin(block.x, block.y, block.z, renderRange.get())) {
-                event.renderer.box(origin.getX() + block.x, origin.getY() + block.y, origin.getZ() + block.z, origin.getX() + block.x + 1, origin.getY() + block.y + 1, origin.getZ() + block.z + 1, sideColor.get(), lineColor.get(), shapeMode.get(), block.excludeDir);
+                event.renderer.box(origin.getX() + block.x, origin.getY() + block.y, origin.getZ() + block.z, origin.getX() + block.x + 1, origin.getY() + block.y + height.get(), origin.getZ() + block.z + 1, sideColor.get(), lineColor.get(), shapeMode.get(), block.excludeDir);
             }
         }
     }
@@ -166,7 +141,6 @@ public class Sphere2dMarker extends BaseMarker {
 
     private void calcCircle() {
         int r = radius.get();
-        int y = layer.get();
 
         // this is entirely arbitrary but always slightly bigger than the actual count -crosby
         int size = MathHelper.ceil(10.4 * r * r);
@@ -194,7 +168,7 @@ public class Sphere2dMarker extends BaseMarker {
                     }
                 }
 
-                renderBlocks.add(new RenderBlock(x, y, z, excludeDir));
+                renderBlocks.add(new RenderBlock(x, 0, z, excludeDir));
             }
         }
 

@@ -15,6 +15,7 @@ import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.world.Dimension;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.util.math.Direction;
 
 public abstract class BaseMarker implements ISerializable<BaseMarker> {
     public final Settings settings = new Settings();
@@ -102,5 +103,46 @@ public abstract class BaseMarker implements ISerializable<BaseMarker> {
         if (settingsTag != null) settings.fromTag(settingsTag);
 
         return this;
+    }
+
+    public enum Mode {
+        Full,
+        Hollow
+    }
+
+    protected static final Direction[] DIRECTIONS = Direction.values();
+
+    protected static class RenderBlock {
+        public final int x, y, z;
+        public byte excludeDir;
+
+        public RenderBlock(int x, int y, int z, byte excludeDir) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.excludeDir = excludeDir;
+        }
+
+        public RenderBlock(int x, int y, int z) {
+            this(x, y, z, (byte) 0);
+        }
+
+        @Override
+        public int hashCode() {
+            long hash = 3241;
+            hash = 3457689L * hash + x;
+            hash = 8734625L * hash + y;
+            hash = 2873465L * hash + z;
+            return (int) hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj instanceof RenderBlock other) {
+                return x == other.x && y == other.y && z == other.z;
+            }
+            return false;
+        }
     }
 }

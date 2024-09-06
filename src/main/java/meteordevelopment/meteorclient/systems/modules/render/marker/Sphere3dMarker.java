@@ -9,7 +9,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
-import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
@@ -22,12 +21,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.concurrent.Future;
 
-public class Sphere2dMarker extends BaseMarker {
-    public static final String type = "Sphere-2D";
+public class Sphere3dMarker extends BaseMarker {
+    public static final String type = "Sphere-3D";
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgRender = settings.createGroup("Render");
-    private final SettingGroup sgKeybinding = settings.createGroup("Keybinding");
 
     private final Setting<BlockPos> center = sgGeneral.add(new BlockPosSetting.Builder()
         .name("center")
@@ -40,18 +38,8 @@ public class Sphere2dMarker extends BaseMarker {
         .description("Radius of the sphere")
         .defaultValue(20)
         .min(1)
-        .noSlider()
+        .sliderRange(1, 64)
         .onChanged(r -> dirty = true)
-        .build()
-    );
-
-    private final Setting<Integer> layer = sgGeneral.add(new IntSetting.Builder()
-        .name("layer")
-        .description("Which layer to render")
-        .defaultValue(0)
-        .min(0)
-        .noSlider()
-        .onChanged(l -> dirty = true)
         .build()
     );
 
@@ -77,7 +65,7 @@ public class Sphere2dMarker extends BaseMarker {
         .description("Rendering range")
         .defaultValue(10)
         .min(1)
-        .sliderRange(1, 20)
+        .sliderRange(1, 128)
         .visible(limitRenderRange::get)
         .build()
     );
@@ -103,33 +91,11 @@ public class Sphere2dMarker extends BaseMarker {
         .build()
     );
 
-    // Keybinding
-
-    @SuppressWarnings("unused")
-    private final Setting<Keybind> nextLayerKey = sgKeybinding.add(new KeybindSetting.Builder()
-        .name("next-layer-keybind")
-        .description("Keybind to increment layer")
-        .action(() -> {
-            if (isVisible() && layer.get() < radius.get() * 2) layer.set(layer.get() + 1);
-        })
-        .build()
-    );
-
-    @SuppressWarnings("unused")
-    private final Setting<Keybind> prevLayerKey = sgKeybinding.add(new KeybindSetting.Builder()
-        .name("prev-layer-keybind")
-        .description("Keybind to increment layer")
-        .action(() -> {
-            if (isVisible()) layer.set(layer.get() - 1);
-        })
-        .build()
-    );
-
     private volatile List<RenderBlock> blocks = List.of();
     private volatile @Nullable Future<?> task = null;
     private boolean dirty = true;
 
-    public Sphere2dMarker() {
+    public Sphere3dMarker() {
         super(type);
     }
 
@@ -144,7 +110,7 @@ public class Sphere2dMarker extends BaseMarker {
                 task = null;
             };
 
-            if (radius.get() <= 50) action.run();
+            if (radius.get() <= 30) action.run();
             else {
                 task = MeteorExecutor.executeFuture(action);
             }
@@ -166,7 +132,6 @@ public class Sphere2dMarker extends BaseMarker {
 
     private void calcCircle() {
         int r = radius.get();
-        int y = layer.get();
 
         // this is entirely arbitrary but always slightly bigger than the actual count -crosby
         int size = MathHelper.ceil(10.4 * r * r);
@@ -175,26 +140,29 @@ public class Sphere2dMarker extends BaseMarker {
         boolean hollow = mode.get() == Mode.Hollow;
 
         for (int x = -r; x <= r; x++) {
-            for (int z = -r; z <= r; z++) {
-                if (!isInside(x, z, r)) continue;
+            for (int y = -r; y <= r; y++) {
+                for (int z = -r; z <= r; z++) {
+                    if (!isInside(x, y, z, r)) continue;
 
-                byte excludeDir = getExcludeDir(x, z, r);
+                    byte excludeDir = getExcludeDir(x, y, z, r);
 
-                if (!hollow && excludeDir == 0b1111000) continue;
+                    if (excludeDir == 0b1111110) continue;
 
-                if (hollow) {
-                    excludeDir = 0;
+                    if (hollow) {
+                        excludeDir = 0;
 
-                    for (Direction dir : Direction.HORIZONTAL) {
-                        int x2 = x + dir.getOffsetX();
-                        int z2 = z + dir.getOffsetZ();
+                        for (Direction dir : DIRECTIONS) {
+                            int x2 = x + dir.getOffsetX();
+                            int y2 = y + dir.getOffsetY();
+                            int z2 = z + dir.getOffsetZ();
 
-                        if (isInside(x2, z2, r) && getExcludeDir(x2, z2, r) != 0b1111000)
-                            excludeDir |= Dir.get(dir);
+                            if (isInside(x2, y2, z2, r) && getExcludeDir(x2, y2, z2, r) != 0b1111110)
+                                excludeDir |= Dir.get(dir);
+                        }
                     }
-                }
 
-                renderBlocks.add(new RenderBlock(x, y, z, excludeDir));
+                    renderBlocks.add(new RenderBlock(x, y, z, excludeDir));
+                }
             }
         }
 
@@ -202,18 +170,18 @@ public class Sphere2dMarker extends BaseMarker {
         blocks = renderBlocks;
     }
 
-    private byte getExcludeDir(int x, int z, int r) {
+    private byte getExcludeDir(int x, int y, int z, int r) {
         byte excludeDir = 0;
 
-        for (Direction dir : Direction.HORIZONTAL) {
-            if (isInside(x + dir.getOffsetX(), z + dir.getOffsetZ(), r))
+        for (Direction dir : DIRECTIONS) {
+            if (isInside(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ(), r))
                 excludeDir |= Dir.get(dir);
         }
 
         return excludeDir;
     }
 
-    private boolean isInside(int x, int z, int r) {
-        return (x * x + z * z) <= (r * r);
+    private boolean isInside(int x, int y, int z, int r) {
+        return (x * x + y * y + z * z) <= (r * r);
     }
 }

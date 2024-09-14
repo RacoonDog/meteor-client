@@ -12,8 +12,9 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.Heightmap;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
 
 import java.util.List;
 
@@ -21,11 +22,12 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static meteordevelopment.meteorclient.utils.Utils.getRenderDistance;
 
 public class ESPChunk {
-
     private final int x, z;
+    public final Chunk chunk;
     public Long2ObjectMap<ESPBlock> blocks;
 
-    public ESPChunk(int x, int z) {
+    public ESPChunk(Chunk chunk, int x, int z) {
+        this.chunk = chunk;
         this.x = x;
         this.z = z;
     }
@@ -34,13 +36,17 @@ public class ESPChunk {
         return blocks == null ? null : blocks.get(ESPBlock.getKey(x, y, z));
     }
 
-    public void add(BlockPos blockPos, boolean update) {
-        ESPBlock block = new ESPBlock(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+    public void add(int x, int y, int z, boolean update) {
+        ESPBlock block = new ESPBlock(this, x, y, z);
 
         if (blocks == null) blocks = new Long2ObjectOpenHashMap<>(64);
-        blocks.put(ESPBlock.getKey(blockPos), block);
+        blocks.put(ESPBlock.getKey(x, y, z), block);
 
         if (update) block.update();
+    }
+
+    public void add(BlockPos blockPos, boolean update) {
+        add(blockPos.getX(), blockPos.getY(), blockPos.getZ(), update);
     }
 
     public void add(BlockPos blockPos) {
@@ -54,9 +60,27 @@ public class ESPChunk {
         }
     }
 
+    public void remove(int x, int y, int z) {
+        if (blocks != null) {
+            ESPBlock block = blocks.remove(ESPBlock.getKey(x, y, z));
+            if (block != null) block.group.remove(block);
+        }
+    }
+
     public void update() {
         if (blocks != null) {
             for (ESPBlock block : blocks.values()) block.update();
+        }
+    }
+
+    public void update(Direction direction) {
+        if (blocks != null) {
+            for (ESPBlock block : blocks.values()) {
+                if (ChunkSectionPos.getSectionCoord(block.x) != ChunkSectionPos.getSectionCoord(block.x + direction.getOffsetX())
+                || ChunkSectionPos.getSectionCoord(block.z) != ChunkSectionPos.getSectionCoord(block.z + direction.getOffsetZ())) {
+                    block.update();
+                }
+            }
         }
     }
 
@@ -85,22 +109,30 @@ public class ESPChunk {
         }
     }
 
-
     public static ESPChunk searchChunk(Chunk chunk, List<Block> blocks) {
-        ESPChunk schunk = new ESPChunk(chunk.getPos().x, chunk.getPos().z);
+        ESPChunk schunk = new ESPChunk(chunk, chunk.getPos().x, chunk.getPos().z);
         if (schunk.shouldBeDeleted()) return schunk;
 
-        BlockPos.Mutable blockPos = new BlockPos.Mutable();
+        ChunkSection[] arr = chunk.getSectionArray();
+        int minX = chunk.getPos().getStartX();
+        int minZ = chunk.getPos().getStartZ();
+        int[] paletteIndices = new int[16 * 16 * 16];
+        for (int cy = 0; cy < arr.length; cy++) {
+            ChunkSection section = arr[cy];
+            if (!section.isEmpty() && section.getBlockStateContainer().hasAny(state -> blocks.contains(state.getBlock()))) {
+                int minY = ChunkSectionPos.getBlockCoord(chunk.sectionIndexToCoord(cy));
+                section.getBlockStateContainer().data.storage().writePaletteIndices(paletteIndices);
 
-        for (int x = chunk.getPos().getStartX(); x <= chunk.getPos().getEndX(); x++) {
-            for (int z = chunk.getPos().getStartZ(); z <= chunk.getPos().getEndZ(); z++) {
-                int height = chunk.getHeightmap(Heightmap.Type.WORLD_SURFACE).get(x - chunk.getPos().getStartX(), z - chunk.getPos().getStartZ());
-
-                for (int y = mc.world.getBottomY(); y < height; y++) {
-                    blockPos.set(x, y, z);
-                    BlockState bs = chunk.getBlockState(blockPos);
-
-                    if (blocks.contains(bs.getBlock())) schunk.add(blockPos, false);
+                for (int y = 0; y < 16; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        for (int x = 0; x < 16; x++) {
+                            int index = y * 16 * 16 + z * 16 + x;
+                            BlockState state = section.getBlockStateContainer().data.palette().get(paletteIndices[index]);
+                            if (blocks.contains(state.getBlock())) {
+                                schunk.add(x + minX, y + minY, z + minZ, false);
+                            }
+                        }
+                    }
                 }
             }
         }

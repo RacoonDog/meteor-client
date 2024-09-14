@@ -7,6 +7,7 @@ package meteordevelopment.meteorclient.systems.modules.render.blockesp;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.ChunkDataEvent;
@@ -16,21 +17,17 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.misc.UnorderedArrayList;
-import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.color.RainbowColors;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.Dimension;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Block;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.Chunk;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class BlockESP extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -75,10 +72,11 @@ public class BlockESP extends Module {
         .build()
     );
 
-    private final BlockPos.Mutable blockPos = new BlockPos.Mutable();
-
     private final Long2ObjectMap<ESPChunk> chunks = new Long2ObjectOpenHashMap<>();
-    private final List<ESPGroup> groups = new UnorderedArrayList<>();
+    private final Set<ESPGroup> groups = new ReferenceOpenHashSet<>();
+
+    private long chunkCount = 0;
+    private double rollingAverage = 0d;
 
     private Dimension lastDimension;
 
@@ -90,13 +88,14 @@ public class BlockESP extends Module {
 
     @Override
     public void onActivate() {
-        synchronized (chunks) {
-            chunks.clear();
-            groups.clear();
-        }
+        chunks.clear();
+        groups.clear();
 
         for (Chunk chunk : Utils.chunks()) {
-            searchChunk(chunk);
+            rawSearchChunk(chunk);
+        }
+        for (ESPChunk chunk : chunks.values()) {
+            chunk.update();
         }
 
         lastDimension = PlayerUtils.getDimension();
@@ -104,10 +103,8 @@ public class BlockESP extends Module {
 
     @Override
     public void onDeactivate() {
-        synchronized (chunks) {
-            chunks.clear();
-            groups.clear();
-        }
+        chunks.clear();
+        groups.clear();
     }
 
     private void onTickRainbow() {
@@ -122,9 +119,9 @@ public class BlockESP extends Module {
         return blockData == null ? defaultBlockConfig.get() : blockData;
     }
 
-    private void updateChunk(int x, int z) {
+    private void updateChunk(int x, int z, Direction direction) {
         ESPChunk chunk = chunks.get(ChunkPos.toLong(x, z));
-        if (chunk != null) chunk.update();
+        if (chunk != null) chunk.update(direction);
     }
 
     private void updateBlock(int x, int y, int z) {
@@ -138,17 +135,13 @@ public class BlockESP extends Module {
     }
 
     public ESPGroup newGroup(Block block) {
-        synchronized (chunks) {
-            ESPGroup group = new ESPGroup(block);
-            groups.add(group);
-            return group;
-        }
+        ESPGroup group = new ESPGroup(block);
+        groups.add(group);
+        return group;
     }
 
     public void removeGroup(ESPGroup group) {
-        synchronized (chunks) {
-            groups.remove(group);
-        }
+        groups.remove(group);
     }
 
     @EventHandler
@@ -156,24 +149,30 @@ public class BlockESP extends Module {
         searchChunk(event.chunk());
     }
 
+    private void rawSearchChunk(Chunk chunk) {
+        ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
+
+        if (schunk.size() > 0) {
+            chunks.put(chunk.getPos().toLong(), schunk);
+        }
+    }
+
     private void searchChunk(Chunk chunk) {
-        MeteorExecutor.execute(() -> {
-            if (!isActive()) return;
-            ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
+        long timer = System.currentTimeMillis();
+        ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
 
-            if (schunk.size() > 0) {
-                synchronized (chunks) {
-                    chunks.put(chunk.getPos().toLong(), schunk);
-                    schunk.update();
+        if (schunk.size() > 0) {
+            chunks.put(chunk.getPos().toLong(), schunk);
+            schunk.update();
 
-                    // Update neighbour chunks
-                    updateChunk(chunk.getPos().x - 1, chunk.getPos().z);
-                    updateChunk(chunk.getPos().x + 1, chunk.getPos().z);
-                    updateChunk(chunk.getPos().x, chunk.getPos().z - 1);
-                    updateChunk(chunk.getPos().x, chunk.getPos().z + 1);
-                }
-            }
-        });
+            // Update neighbour chunks
+            updateChunk(chunk.getPos().x - 1, chunk.getPos().z, Direction.WEST);
+            updateChunk(chunk.getPos().x + 1, chunk.getPos().z, Direction.EAST);
+            updateChunk(chunk.getPos().x, chunk.getPos().z - 1, Direction.NORTH);
+            updateChunk(chunk.getPos().x, chunk.getPos().z + 1, Direction.SOUTH);
+        }
+        timer = System.currentTimeMillis() - timer;
+        rollingAverage = rollingAverage + ((timer - rollingAverage) / ++chunkCount);
     }
 
     @EventHandler
@@ -191,34 +190,29 @@ public class BlockESP extends Module {
         boolean removed = !added && !blocks.get().contains(event.newState.getBlock()) && blocks.get().contains(event.oldState.getBlock());
 
         if (added || removed) {
-            MeteorExecutor.execute(() -> {
-                synchronized (chunks) {
-                    ESPChunk chunk = chunks.get(key);
+            ESPChunk chunk = chunks.get(key);
 
-                    if (chunk == null) {
-                        chunk = new ESPChunk(chunkX, chunkZ);
-                        if (chunk.shouldBeDeleted()) return;
+            if (chunk == null) {
+                chunk = new ESPChunk(mc.world.getChunk(chunkX, chunkZ), chunkX, chunkZ);
+                if (chunk.shouldBeDeleted()) return;
 
-                        chunks.put(key, chunk);
-                    }
+                chunks.put(key, chunk);
+            }
 
-                    blockPos.set(bx, by, bz);
+            if (added) chunk.add(bx, by, bz, true);
+            else chunk.remove(bx, by, bz);
 
-                    if (added) chunk.add(blockPos);
-                    else chunk.remove(blockPos);
+            // Update neighbour blocks
+            for (int x = -1; x < 2; x++) {
+                for (int z = -1; z < 2; z++) {
+                    for (int y = -1; y < 2; y++) {
+                        if (x == 0 && y == 0 && z == 0) continue; // skip middle
+                        if (((~x | ~y | ~z) & 1) == 0) continue; // skip corner diagonals
 
-                    // Update neighbour blocks
-                    for (int x = -1; x < 2; x++) {
-                        for (int z = -1; z < 2; z++) {
-                            for (int y = -1; y < 2; y++) {
-                                if (x == 0 && y == 0 && z == 0) continue;
-
-                                updateBlock(bx + x, by + y, bz + z);
-                            }
-                        }
+                        updateBlock(bx + x, by + y, bz + z);
                     }
                 }
-            });
+            }
         }
     }
 
@@ -233,31 +227,29 @@ public class BlockESP extends Module {
 
     @EventHandler
     private void onRender(Render3DEvent event) {
-        synchronized (chunks) {
-            for (Iterator<ESPChunk> it = chunks.values().iterator(); it.hasNext();) {
-                ESPChunk chunk = it.next();
+        for (Iterator<ESPChunk> it = chunks.values().iterator(); it.hasNext();) {
+            ESPChunk chunk = it.next();
 
-                if (chunk.shouldBeDeleted()) {
-                    MeteorExecutor.execute(() -> {
-                        for (ESPBlock block : chunk.blocks.values()) {
-                            block.group.remove(block, false);
-                            block.loaded = false;
-                        }
-                    });
-
-                    it.remove();
+            if (chunk.shouldBeDeleted()) {
+                for (ESPBlock block : chunk.blocks.values()) {
+                    block.group.remove(block, false);
+                    block.loaded = false;
                 }
-                else chunk.render(event);
+
+                it.remove();
             }
+            else chunk.render(event);
+        }
 
-            if (tracers.get()) {
-                for (Iterator<ESPGroup> it = groups.iterator(); it.hasNext();) {
-                    ESPGroup group = it.next();
-
-                    if (group.blocks.isEmpty()) it.remove();
-                    else group.render(event);
-                }
+        if (tracers.get()) {
+            for (ESPGroup group : groups) {
+                group.render(event);
             }
         }
+    }
+
+    @Override
+    public String getInfoString() {
+        return "Avg: %.2fms".formatted(rollingAverage);
     }
 }

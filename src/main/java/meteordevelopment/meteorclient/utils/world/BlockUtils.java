@@ -31,11 +31,15 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.WorldChunk;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -410,5 +414,38 @@ public class BlockUtils {
      */
     public static BlockPos.Mutable mutateAround(BlockPos.Mutable mutable, BlockPos origin, int xOffset, int yOffset, int zOffset) {
         return mutable.set(origin.getX() + xOffset, origin.getY() + yOffset, origin.getZ() + zOffset);
+    }
+
+    public static BlockState getBlockState(int x, int y, int z) {
+        WorldChunk worldChunk = mc.world.getChunk(ChunkSectionPos.getSectionCoord(x), ChunkSectionPos.getSectionCoord(z));
+        ChunkSection[] sections = worldChunk.getSectionArray();
+
+        int chunkY = worldChunk.getSectionIndex(y);
+        if (chunkY < 0 || chunkY >= sections.length || worldChunk.isEmpty()) {
+            return Blocks.VOID_AIR.getDefaultState();
+        }
+
+        ChunkSection section = sections[chunkY];
+        if (section == null || section.isEmpty()) {
+            return Blocks.AIR.getDefaultState();
+        }
+        return section.getBlockState(x & 15, y & 15, z & 15);
+    }
+
+    public static BlockState getBlockState(Chunk chunk, int x, int y, int z) {
+        if (chunk.getPos().x == ChunkSectionPos.getSectionCoord(x) && chunk.getPos().z == ChunkSectionPos.getSectionCoord(z)) {
+            int chunkY = chunk.getSectionIndex(y);
+            ChunkSection[] sectionArray = chunk.getSectionArray();
+            if (chunkY >= 0 && chunkY < sectionArray.length) {
+                ChunkSection section = sectionArray[chunkY];
+
+                if (!section.isEmpty()) {
+                    return section.getBlockState(x & 15, y & 15, z & 15);
+                }
+            }
+            return Blocks.VOID_AIR.getDefaultState();
+        } else {
+            return getBlockState(x, y, z);
+        }
     }
 }

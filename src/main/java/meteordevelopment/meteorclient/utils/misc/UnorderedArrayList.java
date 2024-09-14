@@ -71,8 +71,8 @@ public class UnorderedArrayList<T> extends AbstractList<T> {
         int i = indexOf(o);
         if (i == -1) return false;
 
-        items[i] = null;
         items[i] = items[--size];
+        items[size] = null;
         modCount++;
         return true;
     }
@@ -80,8 +80,8 @@ public class UnorderedArrayList<T> extends AbstractList<T> {
     @Override
     public T remove(int index) {
         T old = items[index];
-        items[index] = null;
         items[index] = items[--size];
+        items[size] = null;
         modCount++;
         return old;
     }
@@ -98,6 +98,12 @@ public class UnorderedArrayList<T> extends AbstractList<T> {
                 if (j < i) items[j] = item;
 
                 j++;
+            }
+        }
+
+        if (j < preSize) {
+            for (int i = j; i < preSize; i++) {
+                items[i] = null;
             }
         }
 

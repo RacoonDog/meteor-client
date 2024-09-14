@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.render.color.Color;
+import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -18,8 +19,6 @@ import net.minecraft.util.shape.VoxelShapes;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class ESPBlock {
-    private static final BlockPos.Mutable blockPos = new BlockPos.Mutable();
-
     private static final BlockESP blockEsp = Modules.get().get(BlockESP.class);
 
     public static final int FO = 1 << 1;
@@ -42,17 +41,22 @@ public class ESPBlock {
     public static final int BO_RI = 1 << 17;
     public static final int BO_LE = 1 << 18;
 
+    public static final int ALL = FO | BA | LE | RI | TO | BO;
+
     public static final int[] SIDES = { FO, BA, LE, RI, TO, BO };
 
     public final int x, y, z;
+    public final ESPChunk chunk;
     private BlockState state;
+    private VoxelShape shape;
     public int neighbours;
 
     public ESPGroup group;
 
     public boolean loaded = true;
 
-    public ESPBlock(int x, int y, int z) {
+    public ESPBlock(ESPChunk chunk, int x, int y, int z) {
+        this.chunk = chunk;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -95,88 +99,76 @@ public class ESPBlock {
     }
 
     public void update() {
-        state = mc.world.getBlockState(blockPos.set(x, y, z));
-        neighbours = 0;
+        state = BlockUtils.getBlockState(chunk.chunk, x, y, z);
+        int newNeighbours = 0;
 
-        if (isNeighbour(Direction.SOUTH)) neighbours |= FO;
-        if (isNeighbourDiagonal(1, 0, 1)) neighbours |= FO_RI;
-        if (isNeighbour(Direction.EAST)) neighbours |= RI;
-        if (isNeighbourDiagonal(1, 0, -1)) neighbours |= BA_RI;
-        if (isNeighbour(Direction.NORTH)) neighbours |= BA;
-        if (isNeighbourDiagonal(-1, 0, -1)) neighbours |= BA_LE;
-        if (isNeighbour(Direction.WEST)) neighbours |= LE;
-        if (isNeighbourDiagonal(-1, 0, 1)) neighbours |= FO_LE;
+        shape = state.getOutlineShape(mc.world, BlockPos.ORIGIN);
+        if (shape.isEmpty()) shape = VoxelShapes.fullCube();
 
-        if (isNeighbour(Direction.UP)) neighbours |= TO;
-        if (isNeighbourDiagonal(0, 1, 1)) neighbours |= TO_FO;
-        if (isNeighbourDiagonal(0, 1, -1)) neighbours |= TO_BA;
-        if (isNeighbourDiagonal(1, 1, 0)) neighbours |= TO_RI;
-        if (isNeighbourDiagonal(-1, 1, 0)) neighbours |= TO_LE;
-        if (isNeighbour(Direction.DOWN)) neighbours |= BO;
-        if (isNeighbourDiagonal(0, -1, 1)) neighbours |= BO_FO;
-        if (isNeighbourDiagonal(0, -1, -1)) neighbours |= BO_BA;
-        if (isNeighbourDiagonal(1, -1, 0)) neighbours |= BO_RI;
-        if (isNeighbourDiagonal(-1, -1, 0)) neighbours |= BO_LE;
+        if (isNeighbour(Direction.SOUTH)) newNeighbours |= FO;
+        if (isNeighbour(Direction.EAST)) newNeighbours |= RI;
+        if (isNeighbour(Direction.NORTH)) newNeighbours |= BA;
+        if (isNeighbour(Direction.WEST)) newNeighbours |= LE;
+        if (isNeighbour(Direction.UP)) newNeighbours |= TO;
+        if (isNeighbour(Direction.DOWN)) newNeighbours |= BO;
+
+        if (newNeighbours != ALL) {
+            if (isNeighbourDiagonal(1, 0, 1)) newNeighbours |= FO_RI;
+            if (isNeighbourDiagonal(1, 0, -1)) newNeighbours |= BA_RI;
+            if (isNeighbourDiagonal(-1, 0, -1)) newNeighbours |= BA_LE;
+            if (isNeighbourDiagonal(-1, 0, 1)) newNeighbours |= FO_LE;
+
+            if (isNeighbourDiagonal(0, 1, 1)) newNeighbours |= TO_FO;
+            if (isNeighbourDiagonal(0, 1, -1)) newNeighbours |= TO_BA;
+            if (isNeighbourDiagonal(1, 1, 0)) newNeighbours |= TO_RI;
+            if (isNeighbourDiagonal(-1, 1, 0)) newNeighbours |= TO_LE;
+            if (isNeighbourDiagonal(0, -1, 1)) newNeighbours |= BO_FO;
+            if (isNeighbourDiagonal(0, -1, -1)) newNeighbours |= BO_BA;
+            if (isNeighbourDiagonal(1, -1, 0)) newNeighbours |= BO_RI;
+            if (isNeighbourDiagonal(-1, -1, 0)) newNeighbours |= BO_LE;
+        }
+
+        neighbours = newNeighbours;
 
         if (group == null) assignGroup();
     }
 
     private boolean isNeighbour(Direction dir) {
-        blockPos.set(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ());
-        BlockState neighbourState = mc.world.getBlockState(blockPos);
+        if (dir.getDirection() == Direction.AxisDirection.POSITIVE ?
+            shape.getMax(dir.getAxis()) != 1 :
+            shape.getMin(dir.getAxis()) != 0
+        ) return false;
+
+        BlockState neighbourState = BlockUtils.getBlockState(chunk.chunk, x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ());
 
         if (neighbourState.getBlock() != state.getBlock()) return false;
 
-        VoxelShape cube = VoxelShapes.fullCube();
-        VoxelShape shape = state.getOutlineShape(mc.world, blockPos);
-        VoxelShape neighbourShape = neighbourState.getOutlineShape(mc.world, blockPos);
+        VoxelShape neighbourShape = neighbourState.getOutlineShape(mc.world, BlockPos.ORIGIN);
+        if (neighbourShape.isEmpty()) neighbourShape = VoxelShapes.fullCube();
 
-        if (shape.isEmpty()) shape = cube;
-        if (neighbourShape.isEmpty()) neighbourShape = cube;
-
-        switch (dir) {
-            case SOUTH:
-                if (shape.getMax(Direction.Axis.Z) == 1 && neighbourShape.getMin(Direction.Axis.Z) == 0) return true;
-                break;
-
-            case NORTH:
-                if (shape.getMin(Direction.Axis.Z) == 0 && neighbourShape.getMax(Direction.Axis.Z) == 1) return true;
-                break;
-
-            case EAST:
-                if (shape.getMax(Direction.Axis.X) == 1 && neighbourShape.getMin(Direction.Axis.X) == 0) return true;
-                break;
-
-            case WEST:
-                if (shape.getMin(Direction.Axis.X) == 0 && neighbourShape.getMax(Direction.Axis.X) == 1) return true;
-                break;
-
-            case UP:
-                if (shape.getMax(Direction.Axis.Y) == 1 && neighbourShape.getMin(Direction.Axis.Y) == 0) return true;
-                break;
-
-            case DOWN:
-                if (shape.getMin(Direction.Axis.Y) == 0 && neighbourShape.getMax(Direction.Axis.Y) == 1) return true;
-                break;
-        }
-
-        return false;
+        return switch (dir) {
+            case SOUTH -> neighbourShape.getMin(Direction.Axis.Z) == 0;
+            case NORTH -> neighbourShape.getMax(Direction.Axis.Z) == 1;
+            case EAST  -> neighbourShape.getMin(Direction.Axis.X) == 0;
+            case WEST  -> neighbourShape.getMax(Direction.Axis.X) == 1;
+            case UP    -> neighbourShape.getMin(Direction.Axis.Y) == 0;
+            case DOWN  -> neighbourShape.getMax(Direction.Axis.Y) == 1;
+        };
     }
 
-    private boolean isNeighbourDiagonal(double x, double y, double z) {
-        blockPos.set(this.x + x, this.y + y, this.z + z);
-        return state.getBlock() == mc.world.getBlockState(blockPos).getBlock();
+    private boolean isNeighbourDiagonal(int x, int y, int z) {
+        return state.getBlock() == BlockUtils.getBlockState(chunk.chunk, this.x + x, this.y + y, this.z + z).getBlock();
     }
 
     public void render(Render3DEvent event) {
+        if ((neighbours & ALL) == ALL) return;
+
         double x1 = x;
         double y1 = y;
         double z1 = z;
         double x2 = x + 1;
         double y2 = y + 1;
         double z2 = z + 1;
-
-        VoxelShape shape = state.getOutlineShape(mc.world, blockPos);
 
         if (!shape.isEmpty()) {
             x1 = x + shape.getMin(Direction.Axis.X);

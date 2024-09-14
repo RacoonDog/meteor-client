@@ -77,3 +77,6 @@ accessible   field   net/minecraft/client/render/item/ItemRenderer TRIDENT Lnet/
 accessible   field   net/minecraft/client/render/item/ItemRenderer SPYGLASS Lnet/minecraft/client/util/ModelIdentifier;
 
 accessible   class   net/minecraft/entity/effect/StatusEffect$EffectAttributeModifierCreator
+
+accessible   field   net/minecraft/world/chunk/PalettedContainer data Lnet/minecraft/world/chunk/PalettedContainer$Data;
+accessible   class   net/minecraft/world/chunk/PalettedContainer$Data

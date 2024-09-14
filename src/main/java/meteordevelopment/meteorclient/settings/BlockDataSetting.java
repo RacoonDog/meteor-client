@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.settings;
 
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import meteordevelopment.meteorclient.utils.misc.IChangeable;
 import meteordevelopment.meteorclient.utils.misc.ICopyable;
 import meteordevelopment.meteorclient.utils.misc.IGetter;
@@ -29,12 +30,12 @@ public class BlockDataSetting<T extends ICopyable<T> & ISerializable<T> & IChang
 
     @Override
     public void resetImpl() {
-        value = new HashMap<>(defaultValue);
+        value = new Reference2ObjectOpenHashMap<>(defaultValue);
     }
 
     @Override
     protected Map<Block, T> parseImpl(String str) {
-        return new HashMap<>(0);
+        return new Reference2ObjectOpenHashMap<>(0);
     }
 
     @Override

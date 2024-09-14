@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.settings;
 
+import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.block.Block;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -13,7 +14,6 @@ import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -30,13 +30,13 @@ public class BlockListSetting extends Setting<List<Block>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ReferenceArrayList<>(defaultValue);
     }
 
     @Override
     protected List<Block> parseImpl(String str) {
         String[] values = str.split(",");
-        List<Block> blocks = new ArrayList<>(values.length);
+        List<Block> blocks = new ReferenceArrayList<>(values.length);
 
         try {
             for (String value : values) {
@@ -87,11 +87,11 @@ public class BlockListSetting extends Setting<List<Block>> {
         private Predicate<Block> filter;
 
         public Builder() {
-            super(new ArrayList<>(0));
+            super(new ReferenceArrayList<>(0));
         }
 
         public Builder defaultValue(Block... defaults) {
-            return defaultValue(defaults != null ? Arrays.asList(defaults) : new ArrayList<>());
+            return defaultValue(defaults != null ? new ReferenceArrayList<>(Arrays.asList(defaults)) : new ReferenceArrayList<>());
         }
 
         public Builder filter(Predicate<Block> filter) {

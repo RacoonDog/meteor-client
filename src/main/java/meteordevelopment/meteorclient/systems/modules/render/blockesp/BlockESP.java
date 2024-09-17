@@ -7,6 +7,7 @@ package meteordevelopment.meteorclient.systems.modules.render.blockesp;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
@@ -92,10 +93,7 @@ public class BlockESP extends Module {
         groups.clear();
 
         for (Chunk chunk : Utils.chunks()) {
-            rawSearchChunk(chunk);
-        }
-        for (ESPChunk chunk : chunks.values()) {
-            chunk.update();
+            searchChunk(chunk);
         }
 
         lastDimension = PlayerUtils.getDimension();
@@ -119,9 +117,9 @@ public class BlockESP extends Module {
         return blockData == null ? defaultBlockConfig.get() : blockData;
     }
 
-    private void updateChunk(int x, int z, Direction direction) {
+    private void updateChunk(int x, int z, Direction direction, int side) {
         ESPChunk chunk = chunks.get(ChunkPos.toLong(x, z));
-        if (chunk != null) chunk.update(direction);
+        if (chunk != null) chunk.update(direction, side);
     }
 
     private void updateBlock(int x, int y, int z) {
@@ -149,27 +147,20 @@ public class BlockESP extends Module {
         searchChunk(event.chunk());
     }
 
-    private void rawSearchChunk(Chunk chunk) {
-        ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
-
-        if (schunk.size() > 0) {
-            chunks.put(chunk.getPos().toLong(), schunk);
-        }
-    }
-
     private void searchChunk(Chunk chunk) {
         long timer = System.currentTimeMillis();
-        ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
+        List<ESPGroup> returnedGroups = new ReferenceArrayList<>();
+        ESPChunk schunk = ESPChunk.searchChunk(chunk, returnedGroups, blocks.get());
 
-        if (schunk.size() > 0) {
+        if (!schunk.isEmpty()) {
             chunks.put(chunk.getPos().toLong(), schunk);
-            schunk.update();
+            groups.addAll(returnedGroups);
 
             // Update neighbour chunks
-            updateChunk(chunk.getPos().x - 1, chunk.getPos().z, Direction.WEST);
-            updateChunk(chunk.getPos().x + 1, chunk.getPos().z, Direction.EAST);
-            updateChunk(chunk.getPos().x, chunk.getPos().z - 1, Direction.NORTH);
-            updateChunk(chunk.getPos().x, chunk.getPos().z + 1, Direction.SOUTH);
+            updateChunk(chunk.getPos().x - 1, chunk.getPos().z, Direction.WEST, ESPBlock.RI);
+            updateChunk(chunk.getPos().x + 1, chunk.getPos().z, Direction.EAST, ESPBlock.LE);
+            updateChunk(chunk.getPos().x, chunk.getPos().z - 1, Direction.NORTH, ESPBlock.FO);
+            updateChunk(chunk.getPos().x, chunk.getPos().z + 1, Direction.SOUTH, ESPBlock.BA);
         }
         timer = System.currentTimeMillis() - timer;
         rollingAverage = rollingAverage + ((timer - rollingAverage) / ++chunkCount);
@@ -199,7 +190,7 @@ public class BlockESP extends Module {
                 chunks.put(key, chunk);
             }
 
-            if (added) chunk.add(bx, by, bz, true);
+            if (added) chunk.add(bx, by, bz);
             else chunk.remove(bx, by, bz);
 
             // Update neighbour blocks
@@ -250,6 +241,11 @@ public class BlockESP extends Module {
 
     @Override
     public String getInfoString() {
-        return "Avg: %.2fms".formatted(rollingAverage);
+        return "G: %s; C: %s; B: %s, Avg: %.2fms".formatted(
+            groups.size(),
+            chunks.size(),
+            chunks.values().stream().mapToInt(chunk -> chunk.blocks.size()).sum(),
+            rollingAverage
+        );
     }
 }

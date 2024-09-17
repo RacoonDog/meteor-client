@@ -16,6 +16,7 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkSection;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -36,21 +37,18 @@ public class ESPChunk {
         return blocks == null ? null : blocks.get(ESPBlock.getKey(x, y, z));
     }
 
-    public void add(int x, int y, int z, boolean update) {
+    public ESPBlock add(int x, int y, int z) {
         ESPBlock block = new ESPBlock(this, x, y, z);
 
         if (blocks == null) blocks = new Long2ObjectOpenHashMap<>(64);
         blocks.put(ESPBlock.getKey(x, y, z), block);
 
-        if (update) block.update();
-    }
-
-    public void add(BlockPos blockPos, boolean update) {
-        add(blockPos.getX(), blockPos.getY(), blockPos.getZ(), update);
+        block.update(true);
+        return block;
     }
 
     public void add(BlockPos blockPos) {
-        add(blockPos, true);
+        add(blockPos.getX(), blockPos.getY(), blockPos.getZ());
     }
 
     public void remove(BlockPos blockPos) {
@@ -69,16 +67,17 @@ public class ESPChunk {
 
     public void update() {
         if (blocks != null) {
-            for (ESPBlock block : blocks.values()) block.update();
+            for (ESPBlock block : blocks.values()) block.update(true);
         }
     }
 
-    public void update(Direction direction) {
+    public void update(Direction direction, int side) {
         if (blocks != null) {
             for (ESPBlock block : blocks.values()) {
                 if (ChunkSectionPos.getSectionCoord(block.x) != ChunkSectionPos.getSectionCoord(block.x + direction.getOffsetX())
                 || ChunkSectionPos.getSectionCoord(block.z) != ChunkSectionPos.getSectionCoord(block.z + direction.getOffsetZ())) {
-                    block.update();
+                    block.update(true);
+                    block.tryMerge(side);
                 }
             }
         }
@@ -87,12 +86,16 @@ public class ESPChunk {
     public void update(int x, int y, int z) {
         if (blocks != null) {
             ESPBlock block = blocks.get(ESPBlock.getKey(x, y, z));
-            if (block != null) block.update();
+            if (block != null) block.update(true);
         }
     }
 
     public int size() {
         return blocks == null ? 0 : blocks.size();
+    }
+
+    public boolean isEmpty() {
+        return size() <= 0;
     }
 
     public boolean shouldBeDeleted() {
@@ -109,9 +112,11 @@ public class ESPChunk {
         }
     }
 
-    public static ESPChunk searchChunk(Chunk chunk, List<Block> blocks) {
+    public static ESPChunk searchChunk(Chunk chunk, List<ESPGroup> returnedGroups, List<Block> blocks) {
         ESPChunk schunk = new ESPChunk(chunk, chunk.getPos().x, chunk.getPos().z);
         if (schunk.shouldBeDeleted()) return schunk;
+
+        List<ESPBlock> scannedBlocks = new ArrayList<>();
 
         ChunkSection[] arr = chunk.getSectionArray();
         int minX = chunk.getPos().getStartX();
@@ -129,11 +134,18 @@ public class ESPChunk {
                             int index = y * 16 * 16 + z * 16 + x;
                             BlockState state = section.getBlockStateContainer().data.palette().get(paletteIndices[index]);
                             if (blocks.contains(state.getBlock())) {
-                                schunk.add(x + minX, y + minY, z + minZ, false);
+                                ESPBlock block = schunk.add(x + minX, y + minY, z + minZ);
+                                scannedBlocks.add(block);
                             }
                         }
                     }
                 }
+            }
+        }
+
+        if (!schunk.isEmpty()) {
+            for (ESPBlock block : scannedBlocks) {
+                block.deferredAssignGroup(returnedGroups);
             }
         }
 

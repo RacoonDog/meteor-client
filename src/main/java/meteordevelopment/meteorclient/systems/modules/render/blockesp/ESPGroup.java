@@ -12,9 +12,7 @@ import meteordevelopment.meteorclient.utils.misc.UnorderedArrayList;
 import meteordevelopment.meteorclient.utils.render.RenderUtils;
 import net.minecraft.block.Block;
 
-import java.util.ArrayDeque;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 
 public class ESPGroup {
     private static final BlockESP blockEsp = Modules.get().get(BlockESP.class);
@@ -60,11 +58,11 @@ public class ESPGroup {
     }
 
     private void trySplit(ESPBlock block) {
-        Set<ESPBlock> neighbours = new ObjectOpenHashSet<>(6);
+        List<ESPBlock> neighbours = new ArrayList<>(6);
 
         for (int side : ESPBlock.SIDES) {
             if ((block.neighbours & side) == side) {
-                ESPBlock neighbour = block.getSideBlock(side);
+                ESPBlock neighbour = block.getGlobalSideBlock(side);
                 if (neighbour != null) neighbours.add(neighbour);
             }
         }
@@ -83,7 +81,7 @@ public class ESPGroup {
 
                 for (int side : ESPBlock.SIDES) {
                     if ((b.neighbours & side) != side) continue;
-                    ESPBlock neighbour = b.getSideBlock(side);
+                    ESPBlock neighbour = b.getGlobalSideBlock(side);
 
                     if (neighbour != null && remainingBlocks.contains(neighbour)) {
                         blocksToCheck.offer(neighbour);
@@ -136,6 +134,12 @@ public class ESPGroup {
         blocks.ensureCapacity(blocks.size() + group.blocks.size());
         for (ESPBlock block : group.blocks) add(block, false, false);
         blockEsp.removeGroup(group);
+    }
+
+    public void deferredMerge(ESPGroup group, List<ESPGroup> groups) {
+        blocks.ensureCapacity(blocks.size() + group.blocks.size());
+        for (ESPBlock block : group.blocks) add(block, false, false);
+        groups.remove(group);
     }
 
     public void render(Render3DEvent event) {

@@ -16,6 +16,8 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 
+import java.util.List;
+
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class ESPBlock {
@@ -44,6 +46,7 @@ public class ESPBlock {
     public static final int ALL = FO | BA | LE | RI | TO | BO;
 
     public static final int[] SIDES = { FO, BA, LE, RI, TO, BO };
+    private static final int[] POSITIVE_SIDES = { FO, RI, TO };
 
     public final int x, y, z;
     public final ESPChunk chunk;
@@ -62,7 +65,7 @@ public class ESPBlock {
         this.z = z;
     }
 
-    public ESPBlock getSideBlock(int side) {
+    public ESPBlock getGlobalSideBlock(int side) {
         return switch (side) {
             case FO -> blockEsp.getBlock(x, y, z + 1);
             case BA -> blockEsp.getBlock(x, y, z - 1);
@@ -74,13 +77,47 @@ public class ESPBlock {
         };
     }
 
+    public ESPBlock getLocalSideBlock(int side) {
+        return switch (side) {
+            case FO -> chunk.get(x, y, z + 1);
+            case BA -> chunk.get(x, y, z - 1);
+            case LE -> chunk.get(x - 1, y, z);
+            case RI -> chunk.get(x + 1, y, z);
+            case TO -> chunk.get(x, y + 1, z);
+            case BO -> chunk.get(x, y - 1, z);
+            default -> null;
+        };
+    }
+
+    public void deferredAssignGroup(List<ESPGroup> returnedGroups) {
+        if (group == null) {
+            group = new ESPGroup(state.getBlock());
+            returnedGroups.add(group);
+            group.add(this);
+        }
+
+        for (int side : POSITIVE_SIDES) {
+            if ((neighbours & side) != side) continue;
+
+            ESPBlock neighbour = getLocalSideBlock(side);
+            if (neighbour == null || neighbour.group == group) continue;
+
+            if (neighbour.group != null) {
+                group.deferredMerge(neighbour.group, returnedGroups);
+            } else {
+                neighbour.group = group;
+                group.add(neighbour);
+            }
+        }
+    }
+
     private void assignGroup() {
         ESPGroup firstGroup = null;
 
         for (int side : SIDES) {
             if ((neighbours & side) != side) continue;
 
-            ESPBlock neighbour = getSideBlock(side);
+            ESPBlock neighbour = getGlobalSideBlock(side);
             if (neighbour == null || neighbour.group == null) continue;
 
             if (firstGroup == null) {
@@ -98,7 +135,7 @@ public class ESPBlock {
         firstGroup.add(this);
     }
 
-    public void update() {
+    public void update(boolean assignGroup) {
         state = BlockUtils.getBlockState(chunk.chunk, x, y, z);
         int newNeighbours = 0;
 
@@ -130,7 +167,16 @@ public class ESPBlock {
 
         neighbours = newNeighbours;
 
-        if (group == null) assignGroup();
+        if (assignGroup && group == null) assignGroup();
+    }
+
+    public void tryMerge(int side) {
+        if ((neighbours & side) != side) return;
+
+        ESPBlock neighbour = getGlobalSideBlock(side);
+        if (neighbour == null || neighbour.group == null || neighbour.group == group) return;
+
+        group.merge(neighbour.group);
     }
 
     private boolean isNeighbour(Direction dir) {

@@ -42,6 +42,7 @@ public class ESPBlock {
     public static final int BO_RI = 1 << 17;
     public static final int BO_LE = 1 << 18;
 
+    public static final int ALL = FO | BA | LE | RI | TO | BO;
     public static final int[] SIDES = { FO, BA, LE, RI, TO, BO };
 
     public final int x, y, z;
@@ -170,6 +171,8 @@ public class ESPBlock {
     }
 
     public void render(Render3DEvent event) {
+        if ((neighbours & ALL) == ALL) return;
+
         double x1 = x + shape.minX();
         double y1 = y + shape.minY();
         double z1 = z + shape.minZ();
@@ -188,7 +191,7 @@ public class ESPBlock {
         }
         else {
             // Lines
-            if (shapeMode.lines()) {
+            if (shapeMode.lines() && lineColor.a > 5) {
                 // Vertical, BA_LE
                 if (((neighbours & LE) != LE && (neighbours & BA) != BA) || ((neighbours & LE) == LE && (neighbours & BA) == BA && (neighbours & BA_LE) != BA_LE)) {
                     event.renderer.line(x1, y1, z1, x1, y2, z1, lineColor);
@@ -242,7 +245,7 @@ public class ESPBlock {
             }
 
             // Sides
-            if (shapeMode.sides()) {
+            if (shapeMode.sides() && sideColor.a > 5) {
                 // Bottom
                 if ((neighbours & BO) != BO) {
                     event.renderer.quadHorizontal(x1, y1, z1, x2, z2, sideColor);

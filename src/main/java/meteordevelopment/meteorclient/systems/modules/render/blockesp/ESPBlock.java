@@ -6,6 +6,7 @@
 package meteordevelopment.meteorclient.systems.modules.render.blockesp;
 
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
+import meteordevelopment.meteorclient.renderer.Mesh;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.render.color.Color;
@@ -192,83 +193,105 @@ public class ESPBlock {
         else {
             // Lines
             if (shapeMode.lines() && lineColor.a > 5) {
+                Mesh lines = event.renderer.lines;
+
+                int blb = lines.vec3(x1, y1, z1).color(lineColor).next();
+                int blf = lines.vec3(x1, y1, z2).color(lineColor).next();
+                int brb = lines.vec3(x2, y1, z1).color(lineColor).next();
+                int brf = lines.vec3(x2, y1, z2).color(lineColor).next();
+                int tlb = lines.vec3(x1, y2, z1).color(lineColor).next();
+                int tlf = lines.vec3(x1, y2, z2).color(lineColor).next();
+                int trb = lines.vec3(x2, y2, z1).color(lineColor).next();
+                int trf = lines.vec3(x2, y2, z2).color(lineColor).next();
+
                 // Vertical, BA_LE
                 if (((neighbours & LE) != LE && (neighbours & BA) != BA) || ((neighbours & LE) == LE && (neighbours & BA) == BA && (neighbours & BA_LE) != BA_LE)) {
-                    event.renderer.line(x1, y1, z1, x1, y2, z1, lineColor);
+                    lines.line(blb, tlb);
                 }
                 // Vertical, FO_LE
                 if (((neighbours & LE) != LE && (neighbours & FO) != FO) || ((neighbours & LE) == LE && (neighbours & FO) == FO && (neighbours & FO_LE) != FO_LE)) {
-                    event.renderer.line(x1, y1, z2, x1, y2, z2, lineColor);
+                    lines.line(blf, tlf);
                 }
                 // Vertical, BA_RI
                 if (((neighbours & RI) != RI && (neighbours & BA) != BA) || ((neighbours & RI) == RI && (neighbours & BA) == BA && (neighbours & BA_RI) != BA_RI)) {
-                    event.renderer.line(x2, y1, z1, x2, y2, z1, lineColor);
+                    lines.line(brb, trb);
                 }
                 // Vertical, FO_RI
                 if (((neighbours & RI) != RI && (neighbours & FO) != FO) || ((neighbours & RI) == RI && (neighbours & FO) == FO && (neighbours & FO_RI) != FO_RI)) {
-                    event.renderer.line(x2, y1, z2, x2, y2, z2, lineColor);
+                    lines.line(brf, trf);
                 }
 
                 // Horizontal bottom, BA_LE - BA_RI
                 if (((neighbours & BA) != BA && (neighbours & BO) != BO) || ((neighbours & BA) != BA && (neighbours & BO_BA) == BO_BA)) {
-                    event.renderer.line(x1, y1, z1, x2, y1, z1, lineColor);
+                    lines.line(blb, brb);
                 }
                 // Horizontal bottom, FO_LE - FO_RI
                 if (((neighbours & FO) != FO && (neighbours & BO) != BO) || ((neighbours & FO) != FO && (neighbours & BO_FO) == BO_FO)) {
-                    event.renderer.line(x1, y1, z2, x2, y1, z2, lineColor);
+                    lines.line(blf, brf);
                 }
                 // Horizontal top, BA_LE - BA_RI
                 if (((neighbours & BA) != BA && (neighbours & TO) != TO) || ((neighbours & BA) != BA && (neighbours & TO_BA) == TO_BA)) {
-                    event.renderer.line(x1, y2, z1, x2, y2, z1, lineColor);
+                    lines.line(tlb, trb);
                 }
                 // Horizontal top, FO_LE - FO_RI
                 if (((neighbours & FO) != FO && (neighbours & TO) != TO) || ((neighbours & FO) != FO && (neighbours & TO_FO) == TO_FO)) {
-                    event.renderer.line(x1, y2, z2, x2, y2, z2, lineColor);
+                    lines.line(tlf, trf);
                 }
 
                 // Horizontal bottom, BA_LE - FO_LE
                 if (((neighbours & LE) != LE && (neighbours & BO) != BO) || ((neighbours & LE) != LE && (neighbours & BO_LE) == BO_LE)) {
-                    event.renderer.line(x1, y1, z1, x1, y1, z2, lineColor);
+                    lines.line(blb, blf);
                 }
                 // Horizontal bottom, BA_RI - FO_RI
                 if (((neighbours & RI) != RI && (neighbours & BO) != BO) || ((neighbours & RI) != RI && (neighbours & BO_RI) == BO_RI)) {
-                    event.renderer.line(x2, y1, z1, x2, y1, z2, lineColor);
+                    lines.line(brb, brf);
                 }
                 // Horizontal top, BA_LE - FO_LE
                 if (((neighbours & LE) != LE && (neighbours & TO) != TO) || ((neighbours & LE) != LE && (neighbours & TO_LE) == TO_LE)) {
-                    event.renderer.line(x1, y2, z1, x1, y2, z2, lineColor);
+                    lines.line(tlb, tlf);
                 }
                 // Horizontal top, BA_RI - FO_RI
                 if (((neighbours & RI) != RI && (neighbours & TO) != TO) || ((neighbours & RI) != RI && (neighbours & TO_RI) == TO_RI)) {
-                    event.renderer.line(x2, y2, z1, x2, y2, z2, lineColor);
+                    lines.line(trb, trf);
                 }
             }
 
             // Sides
             if (shapeMode.sides() && sideColor.a > 5) {
+                Mesh triangles = event.renderer.triangles;
+
+                int blb = triangles.vec3(x1, y1, z1).color(sideColor).next();
+                int blf = triangles.vec3(x1, y1, z2).color(sideColor).next();
+                int brb = triangles.vec3(x2, y1, z1).color(sideColor).next();
+                int brf = triangles.vec3(x2, y1, z2).color(sideColor).next();
+                int tlb = triangles.vec3(x1, y2, z1).color(sideColor).next();
+                int tlf = triangles.vec3(x1, y2, z2).color(sideColor).next();
+                int trb = triangles.vec3(x2, y2, z1).color(sideColor).next();
+                int trf = triangles.vec3(x2, y2, z2).color(sideColor).next();
+
                 // Bottom
                 if ((neighbours & BO) != BO) {
-                    event.renderer.quadHorizontal(x1, y1, z1, x2, z2, sideColor);
+                    triangles.quad(blb, brb, brf, blf);
                 }
                 // Top
                 if ((neighbours & TO) != TO) {
-                    event.renderer.quadHorizontal(x1, y2, z1, x2, z2, sideColor);
+                    triangles.quad(tlb, tlf, trf, trb);
                 }
                 // Front
                 if ((neighbours & FO) != FO) {
-                    event.renderer.quadVertical(x1, y1, z2, x2, y2, z2, sideColor);
+                    triangles.quad(blf, brf, trf, tlf);
                 }
                 // Back
                 if ((neighbours & BA) != BA) {
-                    event.renderer.quadVertical(x1, y1, z1, x2, y2, z1, sideColor);
+                    triangles.quad(blb, tlb, trb, brb);
                 }
                 // Right
                 if ((neighbours & RI) != RI) {
-                    event.renderer.quadVertical(x2, y1, z1, x2, y2, z2, sideColor);
+                    triangles.quad(brb, trb, trf, brf);
                 }
                 // Left
                 if ((neighbours & LE) != LE) {
-                    event.renderer.quadVertical(x1, y1, z1, x1, y2, z2, sideColor);
+                    triangles.quad(blb, blf, tlf, tlb);
                 }
             }
         }

@@ -260,14 +260,14 @@ public class ESPBlock {
             if (shapeMode.sides() && sideColor.a > 5) {
                 Mesh triangles = event.renderer.triangles;
 
-                int blb = triangles.vec3(x1, y1, z1).color(sideColor).next();
-                int blf = triangles.vec3(x1, y1, z2).color(sideColor).next();
-                int brb = triangles.vec3(x2, y1, z1).color(sideColor).next();
-                int brf = triangles.vec3(x2, y1, z2).color(sideColor).next();
-                int tlb = triangles.vec3(x1, y2, z1).color(sideColor).next();
-                int tlf = triangles.vec3(x1, y2, z2).color(sideColor).next();
-                int trb = triangles.vec3(x2, y2, z1).color(sideColor).next();
-                int trf = triangles.vec3(x2, y2, z2).color(sideColor).next();
+                int blb = ((neighbours & (BO | BA | LE)) != (BO | BA | LE)) ? triangles.vec3(x1, y1, z1).color(sideColor).next() : -1;
+                int blf = ((neighbours & (BO | FO | LE)) != (BO | FO | LE)) ? triangles.vec3(x1, y1, z2).color(sideColor).next() : -1;
+                int brb = ((neighbours & (BO | BA | RI)) != (BO | BA | RI)) ? triangles.vec3(x2, y1, z1).color(sideColor).next() : -1;
+                int brf = ((neighbours & (BO | FO | RI)) != (BO | FO | RI)) ? triangles.vec3(x2, y1, z2).color(sideColor).next() : -1;
+                int tlb = ((neighbours & (TO | BA | LE)) != (TO | BA | LE)) ? triangles.vec3(x1, y2, z1).color(sideColor).next() : -1;
+                int tlf = ((neighbours & (TO | FO | LE)) != (TO | FO | LE)) ? triangles.vec3(x1, y2, z2).color(sideColor).next() : -1;
+                int trb = ((neighbours & (TO | BA | RI)) != (TO | BA | RI)) ? triangles.vec3(x2, y2, z1).color(sideColor).next() : -1;
+                int trf = ((neighbours & (TO | FO | RI)) != (TO | FO | RI)) ? triangles.vec3(x2, y2, z2).color(sideColor).next() : -1;
 
                 // Bottom
                 if ((neighbours & BO) != BO) {

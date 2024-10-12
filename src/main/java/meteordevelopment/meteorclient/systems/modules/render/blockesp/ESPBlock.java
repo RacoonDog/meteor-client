@@ -46,6 +46,7 @@ public class ESPBlock {
 
     public final int x, y, z;
     private BlockState state;
+    private ShapeCache shape;
     public int neighbours;
 
     public ESPGroup group;
@@ -98,6 +99,10 @@ public class ESPBlock {
         state = mc.world.getBlockState(blockPos.set(x, y, z));
         neighbours = 0;
 
+        VoxelShape voxelShape = state.getOutlineShape(mc.world, blockPos);
+        if (voxelShape.isEmpty()) voxelShape = VoxelShapes.fullCube();
+        shape = ShapeCache.of(voxelShape);
+
         if (isNeighbour(Direction.SOUTH)) neighbours |= FO;
         if (isNeighbourDiagonal(1, 0, 1)) neighbours |= FO_RI;
         if (isNeighbour(Direction.EAST)) neighbours |= RI;
@@ -127,36 +132,32 @@ public class ESPBlock {
 
         if (neighbourState.getBlock() != state.getBlock()) return false;
 
-        VoxelShape cube = VoxelShapes.fullCube();
-        VoxelShape shape = state.getOutlineShape(mc.world, blockPos);
         VoxelShape neighbourShape = neighbourState.getOutlineShape(mc.world, blockPos);
-
-        if (shape.isEmpty()) shape = cube;
-        if (neighbourShape.isEmpty()) neighbourShape = cube;
+        if (neighbourShape.isEmpty()) neighbourShape = VoxelShapes.fullCube();
 
         switch (dir) {
             case SOUTH:
-                if (shape.getMax(Direction.Axis.Z) == 1 && neighbourShape.getMin(Direction.Axis.Z) == 0) return true;
+                if (shape.maxZ() == 1 && neighbourShape.getMin(Direction.Axis.Z) == 0) return true;
                 break;
 
             case NORTH:
-                if (shape.getMin(Direction.Axis.Z) == 0 && neighbourShape.getMax(Direction.Axis.Z) == 1) return true;
+                if (shape.minZ() == 0 && neighbourShape.getMax(Direction.Axis.Z) == 1) return true;
                 break;
 
             case EAST:
-                if (shape.getMax(Direction.Axis.X) == 1 && neighbourShape.getMin(Direction.Axis.X) == 0) return true;
+                if (shape.maxX() == 1 && neighbourShape.getMin(Direction.Axis.X) == 0) return true;
                 break;
 
             case WEST:
-                if (shape.getMin(Direction.Axis.X) == 0 && neighbourShape.getMax(Direction.Axis.X) == 1) return true;
+                if (shape.minX() == 0 && neighbourShape.getMax(Direction.Axis.X) == 1) return true;
                 break;
 
             case UP:
-                if (shape.getMax(Direction.Axis.Y) == 1 && neighbourShape.getMin(Direction.Axis.Y) == 0) return true;
+                if (shape.maxY() == 1 && neighbourShape.getMin(Direction.Axis.Y) == 0) return true;
                 break;
 
             case DOWN:
-                if (shape.getMin(Direction.Axis.Y) == 0 && neighbourShape.getMax(Direction.Axis.Y) == 1) return true;
+                if (shape.minY() == 0 && neighbourShape.getMax(Direction.Axis.Y) == 1) return true;
                 break;
         }
 
@@ -169,23 +170,12 @@ public class ESPBlock {
     }
 
     public void render(Render3DEvent event) {
-        double x1 = x;
-        double y1 = y;
-        double z1 = z;
-        double x2 = x + 1;
-        double y2 = y + 1;
-        double z2 = z + 1;
-
-        VoxelShape shape = state.getOutlineShape(mc.world, blockPos);
-
-        if (!shape.isEmpty()) {
-            x1 = x + shape.getMin(Direction.Axis.X);
-            y1 = y + shape.getMin(Direction.Axis.Y);
-            z1 = z + shape.getMin(Direction.Axis.Z);
-            x2 = x + shape.getMax(Direction.Axis.X);
-            y2 = y + shape.getMax(Direction.Axis.Y);
-            z2 = z + shape.getMax(Direction.Axis.Z);
-        }
+        double x1 = x + shape.minX();
+        double y1 = y + shape.minY();
+        double z1 = z + shape.minZ();
+        double x2 = x + shape.maxX();
+        double y2 = y + shape.maxY();
+        double z2 = z + shape.maxZ();
 
         ESPBlockData blockData = blockEsp.getBlockData(state.getBlock());
 
@@ -288,5 +278,24 @@ public class ESPBlock {
 
     public static long getKey(BlockPos blockPos) {
         return getKey(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+    }
+
+    private record ShapeCache(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        private static final ShapeCache FULL_CUBE = new ShapeCache(VoxelShapes.fullCube());
+
+        private ShapeCache(VoxelShape shape) {
+            this(
+                shape.getMin(Direction.Axis.X),
+                shape.getMin(Direction.Axis.Y),
+                shape.getMin(Direction.Axis.Z),
+                shape.getMax(Direction.Axis.X),
+                shape.getMax(Direction.Axis.Y),
+                shape.getMax(Direction.Axis.Z)
+            );
+        }
+
+        private static ShapeCache of(VoxelShape shape) {
+            return shape == VoxelShapes.fullCube() ? FULL_CUBE : new ShapeCache(shape);
+        }
     }
 }

@@ -23,7 +23,7 @@ public class ESPGroup {
 
     public final UnorderedArrayList<ESPBlock> blocks = new UnorderedArrayList<>();
 
-    private double sumX, sumY, sumZ;
+    private long sumX, sumY, sumZ;
 
     public ESPGroup(Block block) {
         this.block = block;
@@ -142,7 +142,7 @@ public class ESPGroup {
         ESPBlockData blockData = blockEsp.getBlockData(block);
 
         if (blockData.tracer) {
-            event.renderer.line(RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z, sumX / blocks.size() + 0.5, sumY / blocks.size() + 0.5, sumZ / blocks.size() + 0.5, blockData.tracerColor);
+            event.renderer.line(RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z, (double) sumX / blocks.size() + 0.5, (double) sumY / blocks.size() + 0.5, (double) sumZ / blocks.size() + 0.5, blockData.tracerColor);
         }
     }
 }

@@ -13,6 +13,9 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * Dropdown-like setting (similar to {@link EnumSetting}) but with a dynamic list of possible choices.
+ */
 public class ProvidedStringSetting extends StringSetting {
     public final Supplier<String[]> supplier;
 

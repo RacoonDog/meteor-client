@@ -6,7 +6,10 @@
 package meteordevelopment.meteorclient.settings;
 
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
+import net.minecraft.nbt.NbtCompound;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -17,6 +20,30 @@ public class ProvidedStringSetting extends StringSetting {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible, renderer, null, wide);
 
         this.supplier = supplier;
+    }
+
+    @Override
+    protected boolean isValueValid(String value) {
+        for (String possibleValue : supplier.get()) {
+            if (value.equals(possibleValue)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public List<String> getSuggestions() {
+        return List.of(supplier.get());
+    }
+
+    @Override
+    public String load(NbtCompound tag) {
+        String value = tag.getString("value");
+
+        if (isValueValid(value)) {
+            set(value);
+        }
+
+        return get();
     }
 
     public static class Builder extends SettingBuilder<Builder, String, ProvidedStringSetting> {
@@ -45,6 +72,7 @@ public class ProvidedStringSetting extends StringSetting {
 
         @Override
         public ProvidedStringSetting build() {
+            Objects.requireNonNull(defaultValue, "Default value cannot be null");
             return new ProvidedStringSetting(name, description, defaultValue, onChanged, onModuleActivated, visible, renderer, wide, supplier);
         }
     }

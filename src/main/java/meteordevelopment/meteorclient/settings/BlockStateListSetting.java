@@ -13,6 +13,7 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.utils.misc.Names;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.WallBannerBlock;
 import net.minecraft.nbt.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
@@ -93,7 +94,10 @@ public class BlockStateListSetting extends Setting<List<BlockStateListSetting.St
     }
 
     public static class Builder extends SettingBuilder<Builder, List<StateEntry>, BlockStateListSetting> {
-        private final List<StateEntry> DEFAULT_UNIVERSE = Registries.BLOCK.stream().map(StateEntry::allOf).toList();
+        private final List<StateEntry> DEFAULT_UNIVERSE = Registries.BLOCK.stream()
+            .filter(block -> !(block instanceof WallBannerBlock))
+            .map(StateEntry::allOf)
+            .toList();
         private Set<StateEntry> universe = new ObjectLinkedOpenHashSet<>(DEFAULT_UNIVERSE);
 
         public Builder() {

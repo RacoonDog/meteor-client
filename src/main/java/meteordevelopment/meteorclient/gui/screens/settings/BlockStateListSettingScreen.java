@@ -9,7 +9,6 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.mixin.IdentifierAccessor;
 import meteordevelopment.meteorclient.settings.BlockStateListSetting;
-import net.minecraft.block.WallBannerBlock;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
@@ -28,11 +27,6 @@ public class BlockStateListSettingScreen extends RegistryListSettingScreen<Block
     @Override
     protected String getValueName(BlockStateListSetting.StateEntry value) {
         return value.toString();
-    }
-
-    @Override
-    protected boolean skipValue(BlockStateListSetting.StateEntry value) {
-        return value.block() instanceof WallBannerBlock;
     }
 
     @Override

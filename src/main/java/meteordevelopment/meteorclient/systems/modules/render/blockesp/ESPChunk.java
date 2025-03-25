@@ -8,6 +8,7 @@ package meteordevelopment.meteorclient.systems.modules.render.blockesp;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
+import meteordevelopment.meteorclient.settings.BlockStateListSetting;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -16,6 +17,7 @@ import net.minecraft.world.Heightmap;
 import net.minecraft.world.chunk.Chunk;
 
 import java.util.List;
+import java.util.Map;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static meteordevelopment.meteorclient.utils.Utils.getRenderDistance;
@@ -86,7 +88,7 @@ public class ESPChunk {
     }
 
 
-    public static ESPChunk searchChunk(Chunk chunk, List<Block> blocks) {
+    public static ESPChunk searchChunk(Chunk chunk, Map<Block, List<BlockStateListSetting.StateEntry>> blocks) {
         ESPChunk schunk = new ESPChunk(chunk.getPos().x, chunk.getPos().z);
         if (schunk.shouldBeDeleted()) return schunk;
 
@@ -100,7 +102,9 @@ public class ESPChunk {
                     blockPos.set(x, y, z);
                     BlockState bs = chunk.getBlockState(blockPos);
 
-                    if (blocks.contains(bs.getBlock())) schunk.add(blockPos, false);
+                    if (BlockESP.matches(blocks, bs)) {
+                        schunk.add(blockPos, false);
+                    }
                 }
             }
         }

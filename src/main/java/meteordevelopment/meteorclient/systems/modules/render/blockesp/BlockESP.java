@@ -7,6 +7,8 @@ package meteordevelopment.meteorclient.systems.modules.render.blockesp;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
@@ -23,14 +25,15 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.Dimension;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.Chunk;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -39,9 +42,10 @@ public class BlockESP extends Module {
 
     // General
 
-    private final Setting<List<Block>> blocks = sgGeneral.add(new BlockListSetting.Builder()
+    private final Setting<List<BlockStateListSetting.StateEntry>> blocks = sgGeneral.add(new BlockStateListSetting.Builder()
         .name("blocks")
         .description("Blocks to search for.")
+        .addToUniverse(BlockStateListSetting.StateEntry.only(Blocks.VAULT, Properties.OMINOUS, true, "Ominous Vault"))
         .onChanged(blocks1 -> {
             if (isActive() && Utils.canUpdate()) onActivate();
         })
@@ -79,6 +83,7 @@ public class BlockESP extends Module {
 
     private final BlockPos.Mutable blockPos = new BlockPos.Mutable();
 
+    private final Map<Block, List<BlockStateListSetting.StateEntry>> theLooker = new Reference2ObjectOpenHashMap<>();
     private final Long2ObjectMap<ESPChunk> chunks = new Long2ObjectOpenHashMap<>();
     private final Set<ESPGroup> groups = new ReferenceOpenHashSet<>();
     private final ExecutorService workerThread = Executors.newSingleThreadExecutor();
@@ -93,6 +98,14 @@ public class BlockESP extends Module {
 
     @Override
     public void onActivate() {
+        synchronized (theLooker) {
+            theLooker.clear();
+
+            for (BlockStateListSetting.StateEntry entry : blocks.get()) {
+                theLooker.computeIfAbsent(entry.block(), key -> new ObjectArrayList<>()).add(entry);
+            }
+        }
+
         synchronized (chunks) {
             chunks.clear();
             groups.clear();
@@ -162,7 +175,7 @@ public class BlockESP extends Module {
     private void searchChunk(Chunk chunk) {
         workerThread.submit(() -> {
             if (!isActive()) return;
-            ESPChunk schunk = ESPChunk.searchChunk(chunk, blocks.get());
+            ESPChunk schunk = ESPChunk.searchChunk(chunk, theLooker);
 
             if (schunk.size() > 0) {
                 synchronized (chunks) {
@@ -190,8 +203,8 @@ public class BlockESP extends Module {
         int chunkZ = bz >> 4;
         long key = ChunkPos.toLong(chunkX, chunkZ);
 
-        boolean added = blocks.get().contains(event.newState.getBlock()) && !blocks.get().contains(event.oldState.getBlock());
-        boolean removed = !added && !blocks.get().contains(event.newState.getBlock()) && blocks.get().contains(event.oldState.getBlock());
+        boolean added = matches(theLooker, event.newState) && !matches(theLooker, event.oldState);
+        boolean removed = !added && !matches(theLooker, event.newState) && matches(theLooker, event.oldState);
 
         if (added || removed) {
             workerThread.submit(() -> {
@@ -264,5 +277,18 @@ public class BlockESP extends Module {
     @Override
     public String getInfoString() {
         return "%s groups".formatted(groups.size());
+    }
+
+    public static boolean matches(Map<Block, List<BlockStateListSetting.StateEntry>> theLooker, BlockState state) {
+        @Nullable List<BlockStateListSetting.StateEntry> entries = theLooker.get(state.getBlock());
+        if (entries != null) {
+            for (BlockStateListSetting.StateEntry entry : entries) {
+                if (entry.matches(state)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

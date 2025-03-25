@@ -52,6 +52,7 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         factories.put(KeybindSetting.class, (table, setting) -> keybindW(table, (KeybindSetting) setting));
         factories.put(BlockSetting.class, (table, setting) -> blockW(table, (BlockSetting) setting));
         factories.put(BlockListSetting.class, (table, setting) -> blockListW(table, (BlockListSetting) setting));
+        factories.put(BlockStateListSetting.class, (table, setting) -> blockStateListW(table, (BlockStateListSetting) setting));
         factories.put(ItemSetting.class, (table, setting) -> itemW(table, (ItemSetting) setting));
         factories.put(ItemListSetting.class, (table, setting) -> itemListW(table, (ItemListSetting) setting));
         factories.put(EntityTypeListSetting.class, (table, setting) -> entityTypeListW(table, (EntityTypeListSetting) setting));
@@ -273,6 +274,10 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
     private void blockListW(WTable table, BlockListSetting setting) {
         selectW(table, setting, () -> mc.setScreen(new BlockListSettingScreen(theme, setting)));
+    }
+
+    private void blockStateListW(WTable table, BlockStateListSetting setting) {
+        selectW(table, setting, () -> mc.setScreen(new BlockStateListSettingScreen(theme, setting)));
     }
 
     private void itemW(WTable table, ItemSetting setting) {

@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class BlockESP extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -83,6 +84,7 @@ public class BlockESP extends Module {
 
     private final BlockPos.Mutable blockPos = new BlockPos.Mutable();
 
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Map<Block, List<BlockStateListSetting.StateEntry>> theLooker = new Reference2ObjectOpenHashMap<>();
     private final Long2ObjectMap<ESPChunk> chunks = new Long2ObjectOpenHashMap<>();
     private final Set<ESPGroup> groups = new ReferenceOpenHashSet<>();
@@ -98,12 +100,16 @@ public class BlockESP extends Module {
 
     @Override
     public void onActivate() {
-        synchronized (theLooker) {
+        try {
+            lock.writeLock().lock();
+
             theLooker.clear();
 
             for (BlockStateListSetting.StateEntry entry : blocks.get()) {
                 theLooker.computeIfAbsent(entry.block(), key -> new ObjectArrayList<>()).add(entry);
             }
+        } finally {
+            lock.writeLock().unlock();
         }
 
         synchronized (chunks) {
@@ -175,7 +181,7 @@ public class BlockESP extends Module {
     private void searchChunk(Chunk chunk) {
         workerThread.submit(() -> {
             if (!isActive()) return;
-            ESPChunk schunk = ESPChunk.searchChunk(chunk, theLooker);
+            ESPChunk schunk = ESPChunk.searchChunk(chunk, theLooker, lock);
 
             if (schunk.size() > 0) {
                 synchronized (chunks) {
@@ -203,8 +209,8 @@ public class BlockESP extends Module {
         int chunkZ = bz >> 4;
         long key = ChunkPos.toLong(chunkX, chunkZ);
 
-        boolean added = matches(theLooker, event.newState) && !matches(theLooker, event.oldState);
-        boolean removed = !added && !matches(theLooker, event.newState) && matches(theLooker, event.oldState);
+        boolean added = matches(lock, theLooker, event.newState) && !matches(lock, theLooker, event.oldState);
+        boolean removed = !added && !matches(lock, theLooker, event.newState) && matches(lock, theLooker, event.oldState);
 
         if (added || removed) {
             workerThread.submit(() -> {
@@ -279,8 +285,15 @@ public class BlockESP extends Module {
         return "%s groups".formatted(groups.size());
     }
 
-    public static boolean matches(Map<Block, List<BlockStateListSetting.StateEntry>> theLooker, BlockState state) {
-        @Nullable List<BlockStateListSetting.StateEntry> entries = theLooker.get(state.getBlock());
+    public static boolean matches(ReentrantReadWriteLock lock, Map<Block, List<BlockStateListSetting.StateEntry>> theLooker, BlockState state) {
+        @Nullable List<BlockStateListSetting.StateEntry> entries;
+        try {
+            lock.readLock().lock();
+            entries = theLooker.get(state.getBlock());
+        } finally {
+            lock.readLock().unlock();
+        }
+
         if (entries != null) {
             for (BlockStateListSetting.StateEntry entry : entries) {
                 if (entry.matches(state)) {

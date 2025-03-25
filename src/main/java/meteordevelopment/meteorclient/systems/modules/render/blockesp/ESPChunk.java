@@ -18,6 +18,7 @@ import net.minecraft.world.chunk.Chunk;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static meteordevelopment.meteorclient.utils.Utils.getRenderDistance;
@@ -88,7 +89,7 @@ public class ESPChunk {
     }
 
 
-    public static ESPChunk searchChunk(Chunk chunk, Map<Block, List<BlockStateListSetting.StateEntry>> blocks) {
+    public static ESPChunk searchChunk(Chunk chunk, Map<Block, List<BlockStateListSetting.StateEntry>> blocks, ReentrantReadWriteLock lock) {
         ESPChunk schunk = new ESPChunk(chunk.getPos().x, chunk.getPos().z);
         if (schunk.shouldBeDeleted()) return schunk;
 
@@ -102,7 +103,7 @@ public class ESPChunk {
                     blockPos.set(x, y, z);
                     BlockState bs = chunk.getBlockState(blockPos);
 
-                    if (BlockESP.matches(blocks, bs)) {
+                    if (BlockESP.matches(lock, blocks, bs)) {
                         schunk.add(blockPos, false);
                     }
                 }

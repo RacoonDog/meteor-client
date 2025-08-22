@@ -1,8 +1,8 @@
 package meteordevelopment.meteorclient.renderer.text;
 
-import meteordevelopment.meteorclient.utils.render.FontUtils;
-
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class SystemFontFace extends FontFace {
@@ -16,13 +16,15 @@ public class SystemFontFace extends FontFace {
 
     @Override
     public InputStream toStream() {
-        if (!path.toFile().exists()) {
+        if (!Files.isRegularFile(path)) {
             throw new RuntimeException("Tried to load font that no longer exists.");
         }
 
-        InputStream in = FontUtils.stream(path.toFile());
-        if (in == null) throw new RuntimeException("Failed to load font from " + path + ".");
-        return in;
+        try {
+            return Files.newInputStream(path);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load font from " + path + ".", e);
+        }
     }
 
     @Override

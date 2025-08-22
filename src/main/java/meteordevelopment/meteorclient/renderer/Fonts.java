@@ -15,11 +15,14 @@ import meteordevelopment.meteorclient.renderer.text.FontFamily;
 import meteordevelopment.meteorclient.renderer.text.FontInfo;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.utils.PreInit;
+import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import meteordevelopment.meteorclient.utils.render.FontUtils;
 
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -35,19 +38,24 @@ public class Fonts {
     private Fonts() {
     }
 
-    @PreInit
+    @PreInit(dependencies = {MeteorExecutor.class, Utils.class})
     public static void refresh() {
         FONT_FAMILIES.clear();
 
         long timestamp = System.currentTimeMillis();
+        List<CompletableFuture<Void>> futures = new ObjectArrayList<>();
 
         for (String builtinFont : BUILTIN_FONTS) {
-            FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont);
+            futures.add(CompletableFuture.runAsync(() -> FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont), MeteorExecutor.executor));
+            //FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont);
         }
 
         for (Path fontPath : FontUtils.getSearchPaths()) {
-            FontUtils.loadSystem(FONT_FAMILIES, fontPath);
+            //FontUtils.loadSystem(FONT_FAMILIES, fontPath);
+            FontUtils.loadSystem(FONT_FAMILIES, futures, fontPath);
         }
+
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
         long time = System.currentTimeMillis() - timestamp;
 

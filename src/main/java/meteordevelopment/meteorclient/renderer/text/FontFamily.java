@@ -5,12 +5,13 @@
 
 package meteordevelopment.meteorclient.renderer.text;
 
-import java.util.ArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
 import java.util.List;
 
 public class FontFamily {
     private final String name;
-    private final List<FontFace> fonts = new ArrayList<>();
+    private final List<FontFace> fonts = new ObjectArrayList<>();
 
     public FontFamily(String name) {
         this.name = name;

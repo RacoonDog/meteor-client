@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 public class FontUtils {
@@ -109,54 +110,62 @@ public class FontUtils {
         }
     }
 
-    public static void loadSystem(List<FontFamily> fontList, Path dir) {
+    public static void loadSystem(List<FontFamily> fontList, List<CompletableFuture<Void>> futures, Path dir) {
         if (!Files.exists(dir)) return;
 
         try (Stream<Path> dirFiles = Files.list(dir)) {
             dirFiles.filter(file -> isFontFile(file) || Files.isDirectory(file))
                 .forEach(file -> {
                     if (Files.isDirectory(file)) {
-                        loadSystem(fontList, file);
+                        loadSystem(fontList, futures, file);
                         return;
                     }
 
-                    FontInfo fontInfo = TTFMetadataParser.readFile(file);
-                    if (fontInfo == null) {
-                        MeteorClient.LOG.warn("Failed to load system font {}", file.getFileName().toString());
-                        return;
-                    }
-
-                    boolean isBuiltin = false;
-                    for (String builtinFont : Fonts.BUILTIN_FONTS) {
-                        if (builtinFont.equals(fontInfo.family())) {
-                            isBuiltin = true;
-                            break;
+                    futures.add(CompletableFuture.runAsync(() -> {
+                        FontInfo fontInfo = TTFMetadataParser.readFile(file);
+                        if (fontInfo == null) {
+                            MeteorClient.LOG.warn("Failed to load system font {}", file.getFileName().toString());
+                            return;
                         }
-                    }
-                    if (isBuiltin) return;
 
-                    FontFace fontFace = new SystemFontFace(fontInfo, file);
-                    if (!addFont(fontList, fontFace)) {
-                        MeteorClient.LOG.warn("Failed to load system font {}", fontFace);
-                    }
+                        boolean isBuiltin = false;
+                        for (String builtinFont : Fonts.BUILTIN_FONTS) {
+                            if (builtinFont.equals(fontInfo.family())) {
+                                isBuiltin = true;
+                                break;
+                            }
+                        }
+                        if (isBuiltin) return;
+
+                        FontFace fontFace = new SystemFontFace(fontInfo, file);
+                        if (!addFont(fontList, fontFace)) {
+                            MeteorClient.LOG.warn("Failed to load system font {}", fontFace);
+                        }
+                    }));
                 });
         } catch (IOException ignored) {}
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     public static boolean addFont(List<FontFamily> fontList, FontFace font) {
         if (font == null) return false;
 
         FontInfo info = font.info;
 
-        FontFamily family = Fonts.getFamily(info.family());
-        if (family == null) {
-            family = new FontFamily(info.family());
-            fontList.add(family);
+        FontFamily family;
+        synchronized (fontList) {
+            family = Fonts.getFamily(info.family());
+            if (family == null) {
+                family = new FontFamily(info.family());
+                fontList.add(family);
+            }
         }
 
-        if (family.hasType(info.type())) return false;
+        synchronized (family) {
+            if (family.hasType(info.type())) return false;
 
-        return family.addFont(font);
+            return family.addFont(font);
+        }
     }
 
     public static InputStream stream(String builtin) {

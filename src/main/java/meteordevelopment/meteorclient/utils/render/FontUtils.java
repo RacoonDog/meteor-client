@@ -11,6 +11,7 @@ import meteordevelopment.meteorclient.renderer.Fonts;
 import meteordevelopment.meteorclient.renderer.text.TTFMetadataParser;
 import meteordevelopment.meteorclient.renderer.text.*;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
 import net.minecraft.util.Util;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.stb.STBTTFontinfo;
@@ -141,7 +142,7 @@ public class FontUtils {
                         if (!addFont(fontList, fontFace)) {
                             MeteorClient.LOG.warn("Failed to load system font {}", fontFace);
                         }
-                    }));
+                    }, MeteorExecutor.executor));
                 });
         } catch (IOException ignored) {}
     }

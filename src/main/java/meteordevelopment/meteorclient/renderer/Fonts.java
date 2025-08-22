@@ -47,11 +47,9 @@ public class Fonts {
 
         for (String builtinFont : BUILTIN_FONTS) {
             futures.add(CompletableFuture.runAsync(() -> FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont), MeteorExecutor.executor));
-            //FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont);
         }
 
         for (Path fontPath : FontUtils.getSearchPaths()) {
-            //FontUtils.loadSystem(FONT_FAMILIES, fontPath);
             FontUtils.loadSystem(FONT_FAMILIES, futures, fontPath);
         }
 

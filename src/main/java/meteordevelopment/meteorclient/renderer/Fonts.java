@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.renderer;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.meteor.CustomFontChangedEvent;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
@@ -16,8 +17,7 @@ import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.render.FontUtils;
 
-import java.io.File;
-import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
@@ -29,7 +29,7 @@ public class Fonts {
     public static String DEFAULT_FONT_FAMILY;
     public static FontFace DEFAULT_FONT;
 
-    public static final List<FontFamily> FONT_FAMILIES = new ArrayList<>();
+    public static final List<FontFamily> FONT_FAMILIES = new ObjectArrayList<>();
     public static CustomTextRenderer RENDERER;
 
     private Fonts() {
@@ -45,8 +45,8 @@ public class Fonts {
             FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont);
         }
 
-        for (String fontPath : FontUtils.getSearchPaths()) {
-            FontUtils.loadSystem(FONT_FAMILIES, new File(fontPath));
+        for (Path fontPath : FontUtils.getSearchPaths()) {
+            FontUtils.loadSystem(FONT_FAMILIES, fontPath);
         }
 
         long time = System.currentTimeMillis() - timestamp;

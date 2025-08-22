@@ -39,6 +39,8 @@ public class Fonts {
     public static void refresh() {
         FONT_FAMILIES.clear();
 
+        long timestamp = System.currentTimeMillis();
+
         for (String builtinFont : BUILTIN_FONTS) {
             FontUtils.loadBuiltin(FONT_FAMILIES, builtinFont);
         }
@@ -47,9 +49,11 @@ public class Fonts {
             FontUtils.loadSystem(FONT_FAMILIES, new File(fontPath));
         }
 
+        long time = System.currentTimeMillis() - timestamp;
+
         FONT_FAMILIES.sort(Comparator.comparing(FontFamily::getName));
 
-        MeteorClient.LOG.info("Found {} font families.", FONT_FAMILIES.size());
+        MeteorClient.LOG.info("Found {} font families in {} ms.", FONT_FAMILIES.size(), time);
 
         DEFAULT_FONT_FAMILY = FontUtils.getBuiltinFontInfo(BUILTIN_FONTS[1]).family();
         DEFAULT_FONT = getFamily(DEFAULT_FONT_FAMILY).get(FontInfo.Type.Regular);

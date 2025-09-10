@@ -8,7 +8,6 @@ package meteordevelopment.meteorclient.utils.render;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.renderer.Fonts;
-import meteordevelopment.meteorclient.renderer.text.TTFMetadataParser;
 import meteordevelopment.meteorclient.renderer.text.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.network.MeteorExecutor;
@@ -125,7 +124,7 @@ public class FontUtils {
                     futures.add(CompletableFuture.runAsync(() -> {
                         FontInfo fontInfo = TTFMetadataParser.readFile(file);
                         if (fontInfo == null) {
-                            MeteorClient.LOG.warn("Failed to load system font {}", file.getFileName().toString());
+                            MeteorClient.LOG.warn("Failed to load system font {}", file.getFileName());
                             return;
                         }
 
@@ -147,22 +146,18 @@ public class FontUtils {
         } catch (IOException ignored) {}
     }
 
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     public static boolean addFont(List<FontFamily> fontList, FontFace font) {
         if (font == null) return false;
 
         FontInfo info = font.info;
 
-        FontFamily family;
-        synchronized (fontList) {
-            family = Fonts.getFamily(info.family());
+        synchronized (Fonts.FONT_FAMILIES) {
+            FontFamily family = Fonts.getFamily(info.family());
             if (family == null) {
                 family = new FontFamily(info.family());
                 fontList.add(family);
             }
-        }
 
-        synchronized (family) {
             if (family.hasType(info.type())) return false;
 
             return family.addFont(font);

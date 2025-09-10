@@ -170,7 +170,7 @@ public class TTFMetadataParser {
     /**
      * Enables font debugging for all fonts.
      */
-    private static final boolean DEBUG_ALL_FONTS = Boolean.getBoolean("meteor.font.debug");
+    private static final boolean DEBUG_ALL_FONTS = Boolean.getBoolean("meteor.font.debugAllFonts");
 
     private static class Debug {
         private static final @Nullable Charset MAC_ROMAN_CHARSET;

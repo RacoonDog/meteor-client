@@ -5,23 +5,29 @@
 
 package meteordevelopment.meteorclient.renderer.text;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.utils.Utils;
-import org.apache.commons.io.FilenameUtils;
+import net.fabricmc.loader.api.FabricLoader;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.lwjgl.stb.STBTruetype.*;
 
 /**
  * A minimal TrueType font file parser to efficiently decode font metadata.
- * <a href="https://learn.microsoft.com/en-us/typography/opentype/spec/otff">TTF specification</a>
+ * <br><a href="https://learn.microsoft.com/en-us/typography/opentype/spec/otff">TTF specification</a>
+ * <br><a href="https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6name.html">Name Table Entries</a>
  *
  * @author Crosby
  */
@@ -103,11 +109,20 @@ public class TTFMetadataParser {
                 }
             }
 
+            boolean invalid = fontName == null || fontType == null;
+
+            if (DEBUG_ALL_FONTS || (DEBUG && invalid)) {
+                channel.position(nameTableOffset);
+                nameTableBuffer = readBuffer(channel, nameTableLength);
+                nameTableBuffer.position(Short.BYTES * 3);
+                Debug.debug(file, nameTableBuffer, count, storageOffset);
+            }
+
             // no suitable name entries found
-            if (fontName == null || fontType == null) {
+            if (invalid) {
                 String fileName = file.getFileName().toString();
-                MeteorClient.LOG.debug("No suitable name entries found for font {}, using fallback", fileName);
-                return new FontInfo(Utils.nameToTitle(FilenameUtils.removeExtension(fileName)), FontInfo.Type.Regular);
+                MeteorClient.LOG.debug("No suitable name entries found for font {}.", fileName);
+                return null;
             }
 
             return new FontInfo(fontName, FontInfo.Type.fromString(fontType));
@@ -145,5 +160,121 @@ public class TTFMetadataParser {
         value |= string.charAt(2) << 8;
         value |= string.charAt(3);
         return value;
+    }
+
+    /**
+     * Enables font debugging on erroring fonts.
+     */
+    private static final boolean DEBUG = FabricLoader.getInstance().isDevelopmentEnvironment() || Boolean.getBoolean("meteor.font.debug");
+
+    /**
+     * Enables font debugging for all fonts.
+     */
+    private static final boolean DEBUG_ALL_FONTS = Boolean.getBoolean("meteor.font.debug");
+
+    private static class Debug {
+        private static final @Nullable Charset MAC_ROMAN_CHARSET;
+        private static final Int2ObjectMap<String> PLATFORM_IDS_MAP = new Int2ObjectArrayMap<>(4) {{
+            put(0, "Unicode");
+            put(1, "Mac");
+            put(2, "Iso");
+            put(3, "Microsoft");
+        }};
+
+        private static final Int2ObjectMap<String> NAME_IDS_MAP = new Int2ObjectArrayMap<>(4) {{
+            put(1, "Family");
+            put(2, "Subfamily");
+            put(3, "Unique Id");
+            put(4, "Full Name");
+            put(6, "PostScript Name");
+        }};
+
+        static {
+            Charset c;
+            try {
+                c = Charset.forName("MacRoman");
+            } catch (UnsupportedCharsetException e) {
+                c = null;
+            }
+            MAC_ROMAN_CHARSET = c;
+        }
+
+        @Nullable
+        private static String readStringMacRoman(ByteBuffer buffer, int offset, int length) {
+            return MAC_ROMAN_CHARSET != null ? MAC_ROMAN_CHARSET.decode(buffer.slice(offset, length)).toString() : null;
+        }
+
+        private static void debug(Path file, ByteBuffer nameTableBuffer, int count, int storageOffset) {
+            StringBuilder output = new StringBuilder(String.format("Debugging font %s\n", file.getFileName()));
+
+            @Nullable String nameCandidate = null;
+            @Nullable String typeCandidate = null;
+            List<Entry> entries = new ObjectArrayList<>();
+
+            for (int i = 0; i < count; i++) {
+                int platformID = Short.toUnsignedInt(nameTableBuffer.getShort());
+                int encodingID = Short.toUnsignedInt(nameTableBuffer.getShort());
+                int languageID = Short.toUnsignedInt(nameTableBuffer.getShort());
+                int nameID = Short.toUnsignedInt(nameTableBuffer.getShort());
+                int length = Short.toUnsignedInt(nameTableBuffer.getShort());
+                int offset = Short.toUnsignedInt(nameTableBuffer.getShort());
+
+                @Nullable String nameType = NAME_IDS_MAP.get(nameID);
+                if (nameType == null || length > 64) continue;
+
+                boolean macRoman = platformID == STBTT_PLATFORM_ID_MAC && encodingID == STBTT_MAC_EID_ROMAN;
+                @Nullable String str = macRoman
+                    ? readStringMacRoman(nameTableBuffer, storageOffset + offset, length)
+                    : readString(nameTableBuffer, storageOffset + offset, length);
+                if (str == null) continue;
+
+                @Nullable String platform = PLATFORM_IDS_MAP.get(platformID);
+                if (platform == null) platform = String.format("Unknown (%s)", platformID);
+
+                entries.add(new Entry(platform, encodingID, languageID, nameType, str));
+
+                if (platformID == STBTT_PLATFORM_ID_MICROSOFT && encodingID == STBTT_MS_EID_UNICODE_BMP && languageID == STBTT_MS_LANG_ENGLISH && nameID == 1) {
+                    nameCandidate = str;
+                } else if (platformID == STBTT_PLATFORM_ID_MICROSOFT && encodingID == STBTT_MS_EID_UNICODE_BMP && languageID == STBTT_MS_LANG_ENGLISH && nameID == 2) {
+                    typeCandidate = str;
+                }
+            }
+
+            if (entries.isEmpty()) {
+                output.append("No valid NAME table entries.");
+            } else {
+                int w1 = Math.max(entries.stream().map(Entry::platform).mapToInt(String::length).max().orElseThrow(), "Platform".length());
+                int w2 = "Encoding ID".length();
+                int w3 = "Language ID".length();
+                int w4 = Math.max(entries.stream().map(Entry::nameType).mapToInt(String::length).max().orElseThrow(), "Name Type".length());
+                int w5 = Math.max(entries.stream().map(Entry::string).mapToInt(String::length).max().orElseThrow(), "String".length());
+
+                String titleFormatString = "|%-" + w1 + "s|%-" + w2 + "s|%-" + w3 + "s|%-" + w4 + "s|%-" + w5 + "s|\n";
+                String entryFormatString = "|%" + w1 + "s|%" + w2 + "d|%" + w3 + "d|%" + w4 + "s|%" + w5 + "s|\n";
+                String separatorString = String.format("+%s+%s+%s+%s+%s+\n", "-".repeat(w1), "-".repeat(w2), "-".repeat(w3), "-".repeat(w4), "-".repeat(w5));
+
+                output.append(separatorString);
+                output.append(String.format(titleFormatString, "Platform", "Encoding ID", "Language ID", "Name Type", "String"));
+                output.append(separatorString);
+
+                for (Entry entry : entries) {
+                    output.append(String.format(entryFormatString, entry.platform(), entry.encodingId(), entry.languageId(), entry.nameType(), entry.string()));
+                }
+
+                output.append(separatorString);
+
+                if (nameCandidate == null && typeCandidate == null) {
+                    output.append("No valid name & type candidates found.");
+                } else if (nameCandidate == null) {
+                    output.append("No valid name candidate found.");
+                } else if (typeCandidate == null) {
+                    output.append("No valid type candidate found.");
+                }
+            }
+
+            MeteorClient.LOG.info(output.toString());
+        }
+
+        private record Entry(String platform, int encodingId, int languageId, String nameType, String string) {}
     }
 }

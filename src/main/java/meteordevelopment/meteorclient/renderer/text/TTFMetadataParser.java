@@ -33,6 +33,7 @@ import static org.lwjgl.stb.STBTruetype.*;
  */
 public class TTFMetadataParser {
     private static final int NAME_TAG = toTag("name");
+    private static final int CMAP_TAG = toTag("cmap");
     private static final int HEADER_SIZE = Integer.BYTES + Short.BYTES * 4;
     private static final int DIRECTORY_ENTRY_SIZE = Integer.BYTES * 4;
 
@@ -56,15 +57,22 @@ public class TTFMetadataParser {
 
             long nameTableOffset = -1;
             int nameTableLength = -1;
+            long cmapTableOffset = -1;
+            int cmapTableLength = -1;
 
             for (int i = 0; i < numTables; i++) {
                 int tag = directoryBuffer.getInt();
 
                 if (tag == NAME_TAG) {
                     directoryBuffer.position(directoryBuffer.position() + Integer.BYTES); // skip checksum
-                    break;
                     nameTableOffset = Integer.toUnsignedLong(directoryBuffer.getInt());
                     nameTableLength = Math.toIntExact(Integer.toUnsignedLong(directoryBuffer.getInt()));
+                    if (cmapTableOffset != -1) break;
+                } else if (tag == CMAP_TAG) {
+                    directoryBuffer.position(directoryBuffer.position() + Integer.BYTES); // skip checksum
+                    cmapTableOffset = Integer.toUnsignedLong(directoryBuffer.getInt());
+                    cmapTableLength = Math.toIntExact(Integer.toUnsignedLong(directoryBuffer.getInt()));
+                    if (nameTableOffset != -1) break;
                 } else {
                     directoryBuffer.position(directoryBuffer.position() + Integer.BYTES * 3);
                 }
@@ -75,6 +83,10 @@ public class TTFMetadataParser {
                 return null;
             }
 
+            if (cmapTableOffset == -1) {
+                MeteorClient.LOG.debug("Discarding font {}, could not find cmap table", file.getFileName().toString());
+                return null;
+            }
 
             // read name table
             channel.position(nameTableOffset);
@@ -125,12 +137,67 @@ public class TTFMetadataParser {
                 return null;
             }
 
+            // read cmap table
+            channel.position(cmapTableOffset);
+            ByteBuffer cmapTableBuffer = readBuffer(channel, cmapTableLength);
+            nameTableBuffer.position(Short.BYTES); // skip version, (always 0)
+            int cmapEntries = Short.toUnsignedInt(cmapTableBuffer.getShort());
+
+            long cmapOffset = -1;
+
+            // god im so happy stbtt completely ignores the ttf spec
+            for (int i = 0; i < cmapEntries; i++) {
+                int platformID = Short.toUnsignedInt(cmapTableBuffer.getShort());
+                int encodingID = Short.toUnsignedInt(cmapTableBuffer.getShort());
+
+                if (platformID == STBTT_PLATFORM_ID_MICROSOFT && (encodingID == STBTT_MS_EID_UNICODE_BMP || encodingID == STBTT_MS_EID_UNICODE_FULL)) {
+                    cmapOffset = Integer.toUnsignedLong(cmapTableBuffer.getInt());
+                } else if (platformID == STBTT_PLATFORM_ID_UNICODE) {
+                    cmapOffset = Integer.toUnsignedLong(cmapTableBuffer.getInt());
+                } else {
+                    cmapTableBuffer.position(cmapTableBuffer.position() + Integer.BYTES);
+                }
+            }
+
+            if (cmapOffset == -1) {
+                MeteorClient.LOG.debug("Discarding font {}, could not find valid cmap entry", file.getFileName().toString());
+                return null;
+            }
+
+            // check cmap against ascii characters
+            channel.position(cmapTableOffset + cmapOffset);
+            ByteBuffer cmapLookaheadBuffer = readBuffer(channel, Short.BYTES * 5);
+            int cmapFormat = Short.toUnsignedInt(cmapLookaheadBuffer.getShort());
+
+            switch (cmapFormat) {
+                case 0 -> {
+                    int bytes = Short.toUnsignedInt(cmapLookaheadBuffer.getShort());
+                    if (133 >= bytes) throw new MissingAsciiException();
+                }
+                case 6 -> {
+                    int first = Short.toUnsignedInt(cmapLookaheadBuffer.getShort());
+                    int count = Short.toUnsignedInt(cmapLookaheadBuffer.getShort());
+                    if (first > 32 || first + count < 127) throw new MissingAsciiException();
+                }
+                case 4, 12, 13 -> {
+                    // im not checking allat :skull:
+                }
+                default -> {
+                    // cmap entry is not recognized by stbtt
+                    MeteorClient.LOG.debug("Discarding font {}, could not find valid cmap entry", file.getFileName().toString());
+                    return null;
+                }
+            }
+
             return new FontInfo(fontName, FontInfo.Type.fromString(fontType));
         } catch (IOException e) {
             MeteorClient.LOG.debug("Discarding font %s, IOException".formatted(file.getFileName().toString()), e);
             return null;
         } catch (ArithmeticException e) {
             MeteorClient.LOG.debug("Discarding font %s, too big to fit in memory".formatted(file.getFileName().toString()), e);
+            return null;
+        } catch (MissingAsciiException e) {
+            MeteorClient.LOG.debug("Discarding font %s, does not contain ASCII".formatted(file.getFileName().toString()), e);
             return null;
         }
     }
@@ -164,6 +231,8 @@ public class TTFMetadataParser {
         value |= string.charAt(3);
         return value;
     }
+
+    private static class MissingAsciiException extends Exception {}
 
     /**
      * Enables font debugging on erroring fonts.

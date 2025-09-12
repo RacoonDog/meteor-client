@@ -54,7 +54,7 @@ public class TTFMetadataParser {
             // read directory
             ByteBuffer directoryBuffer = readBuffer(channel, DIRECTORY_ENTRY_SIZE * numTables);
 
-            int nameTableOffset = -1;
+            long nameTableOffset = -1;
             int nameTableLength = -1;
 
             for (int i = 0; i < numTables; i++) {
@@ -62,9 +62,9 @@ public class TTFMetadataParser {
 
                 if (tag == NAME_TAG) {
                     directoryBuffer.position(directoryBuffer.position() + Integer.BYTES); // skip checksum
-                    nameTableOffset = (int) Integer.toUnsignedLong(directoryBuffer.getInt());
-                    nameTableLength = (int) Integer.toUnsignedLong(directoryBuffer.getInt());
                     break;
+                    nameTableOffset = Integer.toUnsignedLong(directoryBuffer.getInt());
+                    nameTableLength = Math.toIntExact(Integer.toUnsignedLong(directoryBuffer.getInt()));
                 } else {
                     directoryBuffer.position(directoryBuffer.position() + Integer.BYTES * 3);
                 }
@@ -75,19 +75,19 @@ public class TTFMetadataParser {
                 return null;
             }
 
-            channel.position(nameTableOffset);
 
             // read name table
+            channel.position(nameTableOffset);
             ByteBuffer nameTableBuffer = readBuffer(channel, nameTableLength);
 
             nameTableBuffer.position(Short.BYTES); // skip version, they're backwards compatible
-            int count = Short.toUnsignedInt(nameTableBuffer.getShort());
+            int nameEntries = Short.toUnsignedInt(nameTableBuffer.getShort());
             int storageOffset = Short.toUnsignedInt(nameTableBuffer.getShort());
 
             String fontName = null;
             String fontType = null;
 
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < nameEntries; i++) {
                 int platformID = Short.toUnsignedInt(nameTableBuffer.getShort());
                 int encodingID = Short.toUnsignedInt(nameTableBuffer.getShort());
                 int languageID = Short.toUnsignedInt(nameTableBuffer.getShort());
@@ -115,7 +115,7 @@ public class TTFMetadataParser {
                 channel.position(nameTableOffset);
                 nameTableBuffer = readBuffer(channel, nameTableLength);
                 nameTableBuffer.position(Short.BYTES * 3);
-                Debug.debug(file, nameTableBuffer, count, storageOffset);
+                Debug.debug(file, nameTableBuffer, nameEntries, storageOffset);
             }
 
             // no suitable name entries found
@@ -128,6 +128,9 @@ public class TTFMetadataParser {
             return new FontInfo(fontName, FontInfo.Type.fromString(fontType));
         } catch (IOException e) {
             MeteorClient.LOG.debug("Discarding font %s, IOException".formatted(file.getFileName().toString()), e);
+            return null;
+        } catch (ArithmeticException e) {
+            MeteorClient.LOG.debug("Discarding font %s, too big to fit in memory".formatted(file.getFileName().toString()), e);
             return null;
         }
     }

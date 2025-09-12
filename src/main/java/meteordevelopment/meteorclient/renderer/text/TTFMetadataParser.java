@@ -249,9 +249,9 @@ public class TTFMetadataParser {
                 int w4 = Math.max(entries.stream().map(Entry::nameType).mapToInt(String::length).max().orElseThrow(), "Name Type".length());
                 int w5 = Math.max(entries.stream().map(Entry::string).mapToInt(String::length).max().orElseThrow(), "String".length());
 
-                String titleFormatString = "|%-" + w1 + "s|%-" + w2 + "s|%-" + w3 + "s|%-" + w4 + "s|%-" + w5 + "s|\n";
-                String entryFormatString = "|%" + w1 + "s|%" + w2 + "d|%" + w3 + "d|%" + w4 + "s|%" + w5 + "s|\n";
-                String separatorString = String.format("+%s+%s+%s+%s+%s+\n", "-".repeat(w1), "-".repeat(w2), "-".repeat(w3), "-".repeat(w4), "-".repeat(w5));
+                String titleFormatString = "| %-" + w1 + "s | %-" + w2 + "s | %-" + w3 + "s | %-" + w4 + "s | %-" + w5 + "s |\n";
+                String entryFormatString = "| %" + w1 + "s | %" + w2 + "d | %" + w3 + "d | %" + w4 + "s | %" + w5 + "s |\n";
+                String separatorString = String.format("+%s+%s+%s+%s+%s+\n", "-".repeat(w1 + 2), "-".repeat(w2 + 2), "-".repeat(w3 + 2), "-".repeat(w4 + 2), "-".repeat(w5 + 2));
 
                 output.append(separatorString);
                 output.append(String.format(titleFormatString, "Platform", "Encoding ID", "Language ID", "Name Type", "String"));

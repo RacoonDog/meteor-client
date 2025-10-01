@@ -37,6 +37,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Frustum;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
@@ -55,7 +56,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static meteordevelopment.meteorclient.utils.Utils.getRenderDistance;
 
 public class FastAsyncBlockESP extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -130,8 +130,13 @@ public class FastAsyncBlockESP extends Module {
     public void onActivate() {
         clearChunks();
 
-        for (Chunk chunk : Utils.chunks()) {
-            searchChunk(chunk);
+        int renderDistance = Utils.getRenderDistance() + 1;
+        BlockPos here = new BlockPos(mc.player.getChunkPos().x, 0, mc.player.getChunkPos().z);
+        for (BlockPos pos : BlockPos.iterateOutwards(here, renderDistance, 0, renderDistance)) {
+            @Nullable Chunk chunk = mc.world.getChunk(pos.getX(), pos.getZ());
+            if (chunk != null) {
+                searchChunk(chunk);
+            }
         }
 
         lastDimension = PlayerUtils.getDimension();
@@ -205,7 +210,7 @@ public class FastAsyncBlockESP extends Module {
     }
 
     static boolean isOutOfRange(int cx, int cz) {
-        int viewDist = getRenderDistance() + 1;
+        int viewDist = Utils.getRenderDistance() + 1;
         int chunkX = ChunkSectionPos.getSectionCoord(MinecraftClient.getInstance().player.getBlockPos().getX());
         int chunkZ = ChunkSectionPos.getSectionCoord(MinecraftClient.getInstance().player.getBlockPos().getZ());
 

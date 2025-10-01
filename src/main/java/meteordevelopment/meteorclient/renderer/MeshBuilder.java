@@ -29,12 +29,12 @@ public class MeshBuilder {
     private final int primitiveIndicesCount;
 
     private ByteBuffer vertices = null;
-    private long verticesPointerStart, verticesPointer;
+    public long verticesPointerStart, verticesPointer;
 
     private ByteBuffer indices = null;
     private long indicesPointer;
 
-    private int vertexI, indicesCount;
+    public int vertexI, indicesCount;
 
     private boolean building;
     private double cameraX, cameraZ;
@@ -83,6 +83,19 @@ public class MeshBuilder {
         memPutFloat(p, (float) (x - cameraX));
         memPutFloat(p + 4, (float) y);
         memPutFloat(p + 8, (float) (z - cameraZ));
+
+        verticesPointer += 12;
+        return this;
+    }
+
+    public MeshBuilder rawVec3(double x, double y, double z) {
+        debugVertexBufferCapacity();
+
+        long p = verticesPointer;
+
+        memPutFloat(p, (float) x);
+        memPutFloat(p + 4, (float) y);
+        memPutFloat(p + 8, (float) z);
 
         verticesPointer += 12;
         return this;
@@ -176,6 +189,7 @@ public class MeshBuilder {
 
         if (vertices == null || indices == null) {
             allocateBuffers(256 * 4, 512 * 4);
+            ensureCapacity(vertexCount, indexCount);
             return;
         }
 
@@ -229,8 +243,20 @@ public class MeshBuilder {
         return format.uploadImmediateIndexBuffer(indices);
     }
 
+    public ByteBuffer getVertices() {
+        return vertices.limit(getVerticesOffset());
+    }
+
+    public ByteBuffer getIndices() {
+        return indices.limit(indicesCount * Integer.BYTES);
+    }
+
     public int getIndicesCount() {
         return indicesCount;
+    }
+
+    public int getVertexCount() {
+        return vertexI;
     }
 
     private int getVerticesOffset() {

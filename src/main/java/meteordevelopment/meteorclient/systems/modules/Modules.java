@@ -29,6 +29,7 @@ import meteordevelopment.meteorclient.systems.modules.movement.speed.Speed;
 import meteordevelopment.meteorclient.systems.modules.player.*;
 import meteordevelopment.meteorclient.systems.modules.render.*;
 import meteordevelopment.meteorclient.systems.modules.render.blockesp.BlockESP;
+import meteordevelopment.meteorclient.systems.modules.render.fabe.FastAsyncBlockESP;
 import meteordevelopment.meteorclient.systems.modules.render.marker.Marker;
 import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.systems.modules.world.*;
@@ -525,6 +526,8 @@ public class Modules extends System<Modules> {
         add(new WaypointsModule());
         add(new Xray());
         add(new Zoom());
+
+        add(new FastAsyncBlockESP());
     }
 
     private void initWorld() {

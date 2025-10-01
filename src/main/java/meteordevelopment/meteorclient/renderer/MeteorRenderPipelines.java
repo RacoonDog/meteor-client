@@ -32,6 +32,10 @@ public abstract class MeteorRenderPipelines {
         .withUniform("MeshData", UniformType.UNIFORM_BUFFER)
         .buildSnippet();
 
+    private static final RenderPipeline.Snippet FABE_UNIFORMS = RenderPipeline.builder(MESH_UNIFORMS)
+        .withUniform("FABEData", UniformType.UNIFORM_BUFFER)
+        .buildSnippet();
+
     // World
 
     public static final RenderPipeline WORLD_COLORED = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
@@ -47,11 +51,35 @@ public abstract class MeteorRenderPipelines {
     );
 
     public static final RenderPipeline WORLD_COLORED_LINES = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
-        .withLineSmooth()
+        //.withLineSmooth()
         .withLocation(MeteorClient.identifier("pipeline/world_colored_lines"))
         .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES)
         .withVertexShader(MeteorClient.identifier("shaders/pos_color.vert"))
         .withFragmentShader(MeteorClient.identifier("shaders/pos_color.frag"))
+        .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withBlend(BlendFunction.TRANSLUCENT)
+        .withCull(false)
+        .build()
+    );
+
+    public static final RenderPipeline FABE = add(new ExtendedRenderPipelineBuilder(FABE_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/fabe"))
+        .withVertexFormat(VertexFormats.POSITION, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/fabe.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/fabe.frag"))
+        .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withBlend(BlendFunction.TRANSLUCENT)
+        .withCull(false)
+        .build()
+    );
+
+    public static final RenderPipeline FABE_LINES = add(new ExtendedRenderPipelineBuilder(FABE_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/fabe_lines"))
+        .withVertexFormat(VertexFormats.POSITION, VertexFormat.DrawMode.DEBUG_LINES)
+        .withVertexShader(MeteorClient.identifier("shaders/fabe.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/fabe.frag"))
         .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
         .withDepthWrite(false)
         .withBlend(BlendFunction.TRANSLUCENT)

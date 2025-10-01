@@ -1,0 +1,347 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
+ */
+
+package meteordevelopment.meteorclient.systems.modules.render.fabe;
+
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.systems.RenderSystem;
+import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
+import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.events.render.Render3DEvent;
+import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
+import meteordevelopment.meteorclient.events.world.ChunkDataEvent;
+import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.mixin.WorldRendererAccessor;
+import meteordevelopment.meteorclient.renderer.MeshUniforms;
+import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
+import meteordevelopment.meteorclient.renderer.ShapeMode;
+import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.systems.modules.Categories;
+import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
+import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.player.PlayerUtils;
+import meteordevelopment.meteorclient.utils.render.RenderUtils;
+import meteordevelopment.meteorclient.utils.render.color.RainbowColors;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
+import meteordevelopment.meteorclient.utils.world.Dimension;
+import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Frustum;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.PalettedContainer;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
+
+import java.util.List;
+import java.util.Map;
+import java.util.OptionalInt;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static meteordevelopment.meteorclient.utils.Utils.getRenderDistance;
+
+public class FastAsyncBlockESP extends Module {
+    private final SettingGroup sgGeneral = settings.getDefaultGroup();
+
+    // General
+
+    private final Setting<List<Block>> blocks = sgGeneral.add(new BlockListSetting.Builder()
+        .name("blocks")
+        .description("Blocks to search for.")
+        .onChanged(blocks1 -> {
+            if (isActive() && Utils.canUpdate()) onActivate();
+        })
+        .build()
+    );
+
+    private final Setting<ESPBlockData> defaultBlockConfig = sgGeneral.add(new GenericSetting.Builder<ESPBlockData>()
+        .name("default-block-config")
+        .description("Default block config.")
+        .defaultValue(
+            new ESPBlockData(
+                ShapeMode.Lines,
+                new SettingColor(0, 255, 200),
+                new SettingColor(0, 255, 200, 25),
+                true,
+                new SettingColor(0, 255, 200, 125)
+            )
+        )
+        .build()
+    );
+
+    private final Setting<Map<Block, ESPBlockData>> blockConfigs = sgGeneral.add(new BlockDataSetting.Builder<ESPBlockData>()
+        .name("block-configs")
+        .description("Config for each block.")
+        .defaultData(defaultBlockConfig)
+        .build()
+    );
+
+    private final Setting<Boolean> tracers = sgGeneral.add(new BoolSetting.Builder()
+        .name("tracers")
+        .description("Render tracer lines.")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Boolean> frustumCulling = sgGeneral.add(new BoolSetting.Builder()
+        .name("frustum-culling")
+        .description("Culling Frustumly")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final ExecutorService workerThread = Executors.newFixedThreadPool(4, function -> {
+       Thread t = new Thread(function);
+       t.setDaemon(true);
+       t.setName("FastAsyncBlockESP Worker");
+       t.setUncaughtExceptionHandler((thread, throwable) -> MeteorClient.LOG.error("FABE worker uncaught exception", throwable));
+       return t;
+    });
+
+    private final Queue<Pair<ChunkPos, List<FABEMeshData>>> queuedMeshes = new ConcurrentLinkedQueue<>();
+    private final Long2ObjectMap<List<FABEGpuGroupMesh>> meshesByChunk = new Long2ObjectOpenHashMap<>();
+
+    private Dimension lastDimension;
+
+    public FastAsyncBlockESP() {
+        super(Categories.Render, "fast-async-block-esp", "Renders specified blocks through walls, quickly.", "search", "block-esp");
+
+        RainbowColors.register(this::onTickRainbow);
+    }
+
+    @Override
+    public void onActivate() {
+        synchronized (meshesByChunk) {
+            meshesByChunk.clear();
+        }
+
+        for (Chunk chunk : Utils.chunks()) {
+            searchChunk(chunk);
+        }
+
+        lastDimension = PlayerUtils.getDimension();
+    }
+
+    @Override
+    public void onDeactivate() {
+        synchronized (meshesByChunk) {
+            meshesByChunk.clear();
+        }
+    }
+
+    private void onTickRainbow() {
+        if (!isActive()) return;
+
+        defaultBlockConfig.get().tickRainbow();
+        for (ESPBlockData blockData : blockConfigs.get().values()) blockData.tickRainbow();
+    }
+
+    @EventHandler
+    private void onChunkData(ChunkDataEvent event) {
+        searchChunk(event.chunk());
+    }
+
+    private void searchChunk(Chunk chunk) {
+        workerThread.submit(() -> {
+            if (!isActive() || isOutOfRange(chunk.getPos().x, chunk.getPos().z)) return;
+            FABEChunk schunk = new FABEChunk(chunk);
+            StoragePointer pointer = new StoragePointer(chunk);
+            List<Block> blocks = this.blocks.get();
+
+            // aggregate blocks
+            for (ChunkSection section : chunk.getSectionArray()) {
+                PalettedContainer.Data<BlockState> data = section.getBlockStateContainer().data;
+
+                if (!section.isEmpty()) {
+                    data.storage().forEach(blockIndex -> {
+                        BlockState state = data.palette().get(blockIndex);
+
+                        if (blocks.contains(state.getBlock())) {
+                            schunk.add(state, pointer.x(), pointer.y(), pointer.z());
+                        }
+
+                        pointer.increment();
+                    });
+                }
+
+                pointer.nextSection();
+            }
+
+            if (schunk.isEmpty()) {
+                return;
+            }
+
+            // mesh blocks
+            try {
+                queuedMeshes.add(new ObjectObjectImmutablePair<>(chunk.getPos(), schunk.mesh()));
+            } catch (Throwable t) {
+                MeteorClient.LOG.error("Uh oh!", t);
+            }
+        });
+    }
+
+    static boolean isOutOfRange(int cx, int cz) {
+        int viewDist = getRenderDistance() + 1;
+        int chunkX = ChunkSectionPos.getSectionCoord(MinecraftClient.getInstance().player.getBlockPos().getX());
+        int chunkZ = ChunkSectionPos.getSectionCoord(MinecraftClient.getInstance().player.getBlockPos().getZ());
+
+        return cx > chunkX + viewDist || cx < chunkX - viewDist || cz > chunkZ + viewDist || cz < chunkZ - viewDist;
+    }
+
+    @EventHandler
+    private void onBlockUpdate(BlockUpdateEvent event) {
+        searchChunk(mc.world.getChunk(event.pos));
+    }
+
+    @EventHandler
+    private void onPostTick(TickEvent.Post event) {
+        Dimension dimension = PlayerUtils.getDimension();
+
+        if (lastDimension != dimension) onActivate();
+        else {
+            for (var it = Long2ObjectMaps.fastIterator(meshesByChunk); it.hasNext();) {
+                Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes = it.next();
+                int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
+                int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
+
+                if (isOutOfRange(chunkX, chunkZ)) {
+                    for (FABEGpuGroupMesh old : chunkMeshes.getValue()) {
+                        old.close();
+                    }
+                    it.remove();
+                }
+            }
+        }
+
+        lastDimension = dimension;
+    }
+
+    @EventHandler
+    private void onRender(Render3DEvent event) {
+        // upload buffers
+        while (queuedMeshes.peek() != null) {
+            Pair<ChunkPos, List<FABEMeshData>> chunk = queuedMeshes.poll();
+
+            List<FABEGpuGroupMesh> gpuMeshes = chunk.value().stream().map(FABEGpuGroupMesh::upload).toList();
+
+            @Nullable List<FABEGpuGroupMesh> oldMeshes = meshesByChunk.put(chunk.key().toLong(), gpuMeshes);
+            if (oldMeshes != null) {
+                for (FABEGpuGroupMesh old : oldMeshes) {
+                    old.close();
+                }
+            }
+        }
+
+        if (meshesByChunk.isEmpty()) {
+            return;
+        }
+
+        // render lines & faces
+        Frustum frustum = ((WorldRendererAccessor) mc.worldRenderer).meteor$getFrustum();
+        RenderSystem.getModelViewStack().pushMatrix();
+        RenderSystem.getModelViewStack().mul(event.matrices.peek().getPositionMatrix());
+
+        Vec3d cameraPos = mc.gameRenderer.getCamera().getPos();
+        RenderSystem.getModelViewStack().translate(0, (float) -cameraPos.y, 0);
+
+        GpuBufferSlice meshData = MeshUniforms.write(RenderUtils.projection, RenderSystem.getModelViewStack());
+
+        for (Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes : Long2ObjectMaps.fastIterable(meshesByChunk)) {
+            int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
+            int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
+
+            Vector3f chunkOffset = new Vector3f(
+                (float) (ChunkSectionPos.getBlockCoord(chunkX) - cameraPos.x),
+                0f,
+                (float) (ChunkSectionPos.getBlockCoord(chunkZ) - cameraPos.z)
+            );
+
+            for (FABEGpuGroupMesh mesh : chunkMeshes.getValue()) {
+                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+
+                if (frustumCulling.get() && !frustum.isVisible(mesh.aabb())) {
+                    continue;
+                }
+
+                if (data.shapeMode.lines()) {
+                    Vector4f color = new Vector4f(data.lineColor.r, data.lineColor.g, data.lineColor.b, data.lineColor.a);
+                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+
+                    RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Lines", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+
+                    pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
+                    pass.setUniform("MeshData", meshData);
+                    pass.setUniform("FABEData", fabeMeshData);
+
+                    mesh.lines().bind(pass);
+
+                    pass.drawIndexed(0, 0, mesh.lines().indexCount(), 1);
+                    pass.close();
+                }
+
+                if (data.shapeMode.sides()) {
+                    Vector4f color = new Vector4f(data.sideColor.r, data.sideColor.g, data.sideColor.b, data.sideColor.a);
+                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+
+                    RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Faces", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+
+                    pass.setPipeline(MeteorRenderPipelines.FABE);
+                    pass.setUniform("MeshData", meshData);
+                    pass.setUniform("FABEData", fabeMeshData);
+
+                    mesh.faces().bind(pass);
+
+                    pass.drawIndexed(0, 0, mesh.faces().indexCount(), 1);
+                    pass.close();
+                }
+            }
+        }
+
+        RenderSystem.getModelViewStack().popMatrix();
+
+        // render tracers
+        for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
+            for (FABEGpuGroupMesh mesh : chunkMeshes) {
+                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+
+                if (tracers.get() && data.tracer) {
+                    for (TracerLine tracerLine : mesh.tracerLines()) {
+                        event.renderer.line(
+                            RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z,
+                            tracerLine.x(), tracerLine.y(), tracerLine.z(),
+                            data.tracerColor
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public String getInfoString() {
+        int meshes = 0;
+
+        for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
+            meshes += chunkMeshes.size();
+        }
+
+        return Integer.toString(meshes);
+    }
+}

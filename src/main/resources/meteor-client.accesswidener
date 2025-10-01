@@ -23,3 +23,8 @@ accessible   field   net/minecraft/client/render/RenderPhase ITEM_ENTITY_TARGET 
 # Auto Fish
 accessible class net/minecraft/entity/projectile/FishingBobberEntity$State
 accessible field net/minecraft/entity/projectile/FishingBobberEntity state Lnet/minecraft/entity/projectile/FishingBobberEntity$State;
+
+
+# FastAsyncBlockESP
+accessible field net/minecraft/world/chunk/PalettedContainer data Lnet/minecraft/world/chunk/PalettedContainer$Data;
+accessible class net/minecraft/world/chunk/PalettedContainer$Data

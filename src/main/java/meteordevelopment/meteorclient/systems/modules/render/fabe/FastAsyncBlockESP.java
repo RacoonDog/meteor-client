@@ -230,6 +230,10 @@ public class FastAsyncBlockESP extends Module {
 
     @EventHandler
     private void onBlockUpdate(BlockUpdateEvent event) {
+        if (!blocks.get().contains(event.newState.getBlock()) && !blocks.get().contains(event.oldState.getBlock())) {
+            return;
+        }
+
         Chunk chunk = mc.world.getChunk(event.pos);
         searchChunk(chunk);
 

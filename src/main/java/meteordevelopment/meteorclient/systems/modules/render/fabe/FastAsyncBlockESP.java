@@ -128,9 +128,7 @@ public class FastAsyncBlockESP extends Module {
 
     @Override
     public void onActivate() {
-        synchronized (meshesByChunk) {
-            meshesByChunk.clear();
-        }
+        clearChunks();
 
         for (Chunk chunk : Utils.chunks()) {
             searchChunk(chunk);
@@ -141,9 +139,18 @@ public class FastAsyncBlockESP extends Module {
 
     @Override
     public void onDeactivate() {
-        synchronized (meshesByChunk) {
-            meshesByChunk.clear();
+        clearChunks();
+    }
+
+    private void clearChunks() {
+        queuedMeshes.clear();
+
+        for (List<FABEGpuGroupMesh> meshes : meshesByChunk.values()) {
+            for (FABEGpuGroupMesh mesh : meshes) {
+                mesh.close();
+            }
         }
+        meshesByChunk.clear();
     }
 
     private void onTickRainbow() {

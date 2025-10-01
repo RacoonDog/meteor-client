@@ -168,6 +168,17 @@ public class FastAsyncBlockESP extends Module {
     @EventHandler
     private void onChunkData(ChunkDataEvent event) {
         searchChunk(event.chunk());
+
+        // man i wish there was a better way to do this
+        maybeTrySearchChunk(event.chunk().getPos().x + 1, event.chunk().getPos().z);
+        maybeTrySearchChunk(event.chunk().getPos().x, event.chunk().getPos().z + 1);
+        maybeTrySearchChunk(event.chunk().getPos().x - 1, event.chunk().getPos().z);
+        maybeTrySearchChunk(event.chunk().getPos().x, event.chunk().getPos().z - 1);
+    }
+
+    private void maybeTrySearchChunk(int cx, int cz) {
+        @Nullable Chunk chunk = mc.world.getChunk(cx, cz);
+        if (chunk != null) searchChunk(chunk);
     }
 
     private void searchChunk(Chunk chunk) {
@@ -219,7 +230,23 @@ public class FastAsyncBlockESP extends Module {
 
     @EventHandler
     private void onBlockUpdate(BlockUpdateEvent event) {
-        searchChunk(mc.world.getChunk(event.pos));
+        Chunk chunk = mc.world.getChunk(event.pos);
+        searchChunk(chunk);
+
+        // man i wish there was a better way to do this
+        int x = event.pos.getX() & 15;
+        if (x == 0) {
+            maybeTrySearchChunk(chunk.getPos().x - 1, chunk.getPos().z);
+        } else if (x == 15) {
+            maybeTrySearchChunk(chunk.getPos().x + 1, chunk.getPos().z);
+        }
+
+        int z = event.pos.getZ() & 15;
+        if (z == 0) {
+            maybeTrySearchChunk(chunk.getPos().x, chunk.getPos().z - 1);
+        } else if (z == 15) {
+            maybeTrySearchChunk(chunk.getPos().x, chunk.getPos().z + 1);
+        }
     }
 
     @EventHandler

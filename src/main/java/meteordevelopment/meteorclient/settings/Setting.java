@@ -27,6 +27,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
     protected final T defaultValue;
     protected T value;
+    protected boolean changed;
 
     public final Consumer<Setting<T>> onModuleActivated;
     private final Consumer<T> onChanged;
@@ -54,6 +55,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public boolean set(T value) {
         if (!isValueValid(value)) return false;
         this.value = value;
+        if (value != defaultValue) this.changed = true;
         onChanged();
         return true;
     }
@@ -64,6 +66,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
     public void reset() {
         resetImpl();
+        changed = false;
         onChanged();
     }
 
@@ -119,6 +122,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         NbtCompound tag = new NbtCompound();
 
         tag.putString("name", name);
+        tag.putBoolean("changed", changed);
         save(tag);
 
         return tag;
@@ -129,6 +133,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     @Override
     public T fromTag(NbtCompound tag) {
         T value = load(tag);
+        changed = tag.getBoolean("changed", false); // todo detect manual file modification and update 'changed' accordingly
         onChanged();
 
         return value;

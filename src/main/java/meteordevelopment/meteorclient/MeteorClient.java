@@ -18,6 +18,7 @@ import meteordevelopment.meteorclient.systems.Systems;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.hud.screens.HudEditorScreen;
 import meteordevelopment.meteorclient.systems.modules.Categories;
+import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.misc.DiscordPresence;
 import meteordevelopment.meteorclient.utils.PostInit;
@@ -196,5 +197,13 @@ public class MeteorClient implements ClientModInitializer {
 
     public static Identifier identifier(String path) {
         return Identifier.of(MeteorClient.MOD_ID, path);
+    }
+
+    public static void propagateDefaults() {
+        for (Module module : Modules.get().getAll()) {
+            module.settings.updateDefaults();
+        }
+
+        Config.get().settings.updateDefaults();
     }
 }

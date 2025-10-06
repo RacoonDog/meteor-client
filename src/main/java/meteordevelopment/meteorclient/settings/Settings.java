@@ -134,6 +134,14 @@ public class Settings implements ISerializable<Settings>, Iterable<SettingGroup>
         }
     }
 
+    public void updateDefaults() {
+        for (SettingGroup sg : this) {
+            for (Setting<?> setting : sg) {
+                setting.updateDefaults();
+            }
+        }
+    }
+
     @Override
     public @NotNull Iterator<SettingGroup> iterator() {
         return groups.iterator();

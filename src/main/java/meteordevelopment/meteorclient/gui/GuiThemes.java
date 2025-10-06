@@ -94,6 +94,8 @@ public class GuiThemes {
 
             // Save global gui settings with the new theme
             saveGlobal();
+
+            MeteorClient.propagateDefaults();
         }
     }
 

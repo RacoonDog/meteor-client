@@ -24,6 +24,8 @@ import meteordevelopment.meteorclient.renderer.text.TextRenderer;
 import meteordevelopment.meteorclient.settings.Settings;
 import meteordevelopment.meteorclient.systems.accounts.Account;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.BlockESP;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.misc.Names;
@@ -268,6 +270,12 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
     public abstract Color starscriptKeywordColor();
 
     public abstract Color starscriptAccessedObjectColor();
+
+    // Modules
+
+    public ESPBlockData blockEspDefaultData() {
+        return BlockESP.DEFAULT_DATA;
+    }
 
     // Other
 

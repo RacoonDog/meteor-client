@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.ChunkDataEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
@@ -34,6 +35,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class BlockESP extends Module {
+    public static final ESPBlockData DEFAULT_DATA = new ESPBlockData(
+        ShapeMode.Lines,
+        new SettingColor(0, 255, 200),
+        new SettingColor(0, 255, 200, 25),
+        true,
+        new SettingColor(0, 255, 200, 125)
+    );
+
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
     // General
@@ -50,15 +59,7 @@ public class BlockESP extends Module {
     private final Setting<ESPBlockData> defaultBlockConfig = sgGeneral.add(new GenericSetting.Builder<ESPBlockData>()
         .name("default-block-config")
         .description("Default block config.")
-        .defaultValue(
-            new ESPBlockData(
-                ShapeMode.Lines,
-                new SettingColor(0, 255, 200),
-                new SettingColor(0, 255, 200, 25),
-                true,
-                new SettingColor(0, 255, 200, 125)
-            )
-        )
+        .defaultValue(() -> GuiThemes.get() != null ? GuiThemes.get().blockEspDefaultData() : DEFAULT_DATA) // todo figure out
         .build()
     );
 

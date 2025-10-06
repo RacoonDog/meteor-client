@@ -47,7 +47,7 @@ public class ItemListSetting extends Setting<List<Item>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

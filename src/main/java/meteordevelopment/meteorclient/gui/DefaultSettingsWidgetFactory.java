@@ -406,10 +406,9 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
 
             WButton edit = t.add(theme.button(GuiRenderer.EDIT)).widget();
             edit.action = () -> {
-                SettingColor defaultValue = WHITE;
-                if (_i < setting.getDefaultValue().size()) defaultValue = setting.getDefaultValue().get(_i);
+                SettingColor defaultValue = _i < setting.getDefaultValue().size() ? setting.getDefaultValue().get(_i) : WHITE;
 
-                ColorSetting set = new ColorSetting(setting.name, setting.description, defaultValue, settingColor -> {
+                ColorSetting set = new ColorSetting(setting.name, setting.description, () -> defaultValue, settingColor -> {
                     setting.get().get(_i).set(settingColor);
                     setting.onChanged();
                 }, null, null);

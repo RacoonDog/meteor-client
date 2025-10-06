@@ -68,7 +68,7 @@ public class StringListSetting extends Setting<List<String>>{
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     public static void fillTable(GuiTheme theme, WTable table, StringListSetting setting) {

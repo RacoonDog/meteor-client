@@ -25,7 +25,7 @@ public class ModuleListSetting extends Setting<List<Module>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

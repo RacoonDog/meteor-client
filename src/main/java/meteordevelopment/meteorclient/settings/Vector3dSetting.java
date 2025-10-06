@@ -37,7 +37,7 @@ public class Vector3dSetting extends Setting<Vector3d> {
     @Override
     protected void resetImpl() {
         if (value == null) value = new Vector3d();
-        value.set(defaultValue);
+        value.set(getDefaultValue());
     }
 
     @Override

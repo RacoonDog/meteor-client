@@ -35,7 +35,7 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
 
     @Override
     public void resetImpl() {
-        value = new ObjectOpenHashSet<>(defaultValue);
+        value = new ObjectOpenHashSet<>(getDefaultValue());
     }
 
     @Override

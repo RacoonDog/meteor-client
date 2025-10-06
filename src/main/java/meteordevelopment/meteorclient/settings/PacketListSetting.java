@@ -31,7 +31,7 @@ public class PacketListSetting extends Setting<Set<Class<? extends Packet<?>>>> 
 
     @Override
     public void resetImpl() {
-        value = new ObjectOpenHashSet<>(defaultValue);
+        value = new ObjectOpenHashSet<>(getDefaultValue());
     }
 
     @Override

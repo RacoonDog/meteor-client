@@ -24,7 +24,7 @@ public class StatusEffectAmplifierMapSetting extends Setting<Reference2IntMap<St
 
     @Override
     public void resetImpl() {
-        value = new Reference2IntOpenHashMap<>(defaultValue);
+        value = new Reference2IntOpenHashMap<>(getDefaultValue());
     }
 
     @Override

@@ -30,7 +30,7 @@ public class EnchantmentListSetting extends Setting<Set<RegistryKey<Enchantment>
 
     @Override
     public void resetImpl() {
-        value = new ObjectOpenHashSet<>(defaultValue);
+        value = new ObjectOpenHashSet<>(getDefaultValue());
     }
 
     @Override

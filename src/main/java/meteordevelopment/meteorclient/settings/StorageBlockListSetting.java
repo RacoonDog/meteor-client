@@ -55,7 +55,7 @@ public class StorageBlockListSetting extends Setting<List<BlockEntityType<?>>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

@@ -25,7 +25,7 @@ public class StatusEffectListSetting extends Setting<List<StatusEffect>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

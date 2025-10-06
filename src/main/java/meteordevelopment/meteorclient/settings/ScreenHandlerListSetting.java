@@ -25,7 +25,7 @@ public class ScreenHandlerListSetting extends Setting<List<ScreenHandlerType<?>>
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

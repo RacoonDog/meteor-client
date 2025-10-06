@@ -26,7 +26,7 @@ public class ParticleTypeListSetting extends Setting<List<ParticleType<?>>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

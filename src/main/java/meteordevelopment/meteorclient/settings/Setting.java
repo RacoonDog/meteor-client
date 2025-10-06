@@ -189,7 +189,8 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         protected Consumer<Setting<V>> onModuleActivated;
 
         protected SettingBuilder(V defaultValue) {
-            this.defaultValue(defaultValue);
+            this.defaultValue = defaultValue;
+            this.defaultValueSupplier = () -> defaultValue;
         }
 
         public B name(String name) {

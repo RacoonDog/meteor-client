@@ -30,7 +30,7 @@ public class BlockListSetting extends Setting<List<Block>> {
 
     @Override
     public void resetImpl() {
-        value = new ArrayList<>(defaultValue);
+        value = new ArrayList<>(getDefaultValue());
     }
 
     @Override

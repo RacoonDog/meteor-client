@@ -8,6 +8,7 @@ package meteordevelopment.meteorclient.settings;
 import net.minecraft.nbt.NbtCompound;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class DoubleSetting extends Setting<Double> {
     public final double min, max;
@@ -16,7 +17,7 @@ public class DoubleSetting extends Setting<Double> {
     public final int decimalPlaces;
     public final boolean noSlider;
 
-    private DoubleSetting(String name, String description, double defaultValue, Consumer<Double> onChanged, Consumer<Setting<Double>> onModuleActivated, IVisible visible, double min, double max, double sliderMin, double sliderMax, boolean onSliderRelease, int decimalPlaces, boolean noSlider) {
+    private DoubleSetting(String name, String description, Supplier<Double> defaultValue, Consumer<Double> onChanged, Consumer<Setting<Double>> onModuleActivated, IVisible visible, double min, double max, double sliderMin, double sliderMax, boolean onSliderRelease, int decimalPlaces, boolean noSlider) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
 
         this.min = min;
@@ -120,7 +121,7 @@ public class DoubleSetting extends Setting<Double> {
         }
 
         public DoubleSetting build() {
-            return new DoubleSetting(name, description, defaultValue, onChanged, onModuleActivated, visible, min, max, Math.max(sliderMin, min), Math.min(sliderMax, max), onSliderRelease, decimalPlaces, noSlider);
+            return new DoubleSetting(name, description, defaultValueSupplier, onChanged, onModuleActivated, visible, min, max, Math.max(sliderMin, min), Math.min(sliderMax, max), onSliderRelease, decimalPlaces, noSlider);
         }
     }
 }

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     private static final List<String> NO_SUGGESTIONS = new ArrayList<>(0);
@@ -25,7 +26,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public final String name, title, description;
     private final IVisible visible;
 
-    protected final T defaultValue;
+    protected final Supplier<T> defaultValueSupplier;
     protected T value;
     protected boolean changed;
 
@@ -35,16 +36,21 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public Module module;
     public boolean lastWasVisible;
 
-    public Setting(String name, String description, T defaultValue, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
+    public Setting(String name, String description, Supplier<T> defaultValue, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
         this.name = name;
         this.title = Utils.nameToTitle(name);
         this.description = description;
-        this.defaultValue = defaultValue;
+        this.defaultValueSupplier = defaultValue;
         this.onChanged = onChanged;
         this.onModuleActivated = onModuleActivated;
         this.visible = visible;
 
         resetImpl();
+    }
+
+    // some setting types just have no use for dynamic defaults
+    protected Setting(String name, String description, T defaultValue, Consumer<T> onChanged, Consumer<Setting<T>> onModuleActivated, IVisible visible) {
+        this(name, description, () -> defaultValue, onChanged, onModuleActivated, visible);
     }
 
     @Override
@@ -55,13 +61,13 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public boolean set(T value) {
         if (!isValueValid(value)) return false;
         this.value = value;
-        if (value != defaultValue) this.changed = true;
+        if (value != getDefaultValue()) this.changed = true;
         onChanged();
         return true;
     }
 
     protected void resetImpl() {
-        value = defaultValue;
+        value = getDefaultValue();
     }
 
     public void reset() {
@@ -70,8 +76,12 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
         onChanged();
     }
 
+    public void updateDefaults() {
+        if (!changed) this.reset();
+    }
+
     public T getDefaultValue() {
-        return defaultValue;
+        return defaultValueSupplier.get();
     }
 
     public boolean parse(String str) {
@@ -88,7 +98,7 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     }
 
     public boolean wasChanged() {
-        return !Objects.equals(value, defaultValue);
+        return changed;
     }
 
     public void onChanged() {
@@ -173,12 +183,13 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
     public abstract static class SettingBuilder<B, V, S> {
         protected String name = "undefined", description = "";
         protected V defaultValue;
+        protected Supplier<V> defaultValueSupplier;
         protected IVisible visible;
         protected Consumer<V> onChanged;
         protected Consumer<Setting<V>> onModuleActivated;
 
         protected SettingBuilder(V defaultValue) {
-            this.defaultValue = defaultValue;
+            this.defaultValue(defaultValue);
         }
 
         public B name(String name) {
@@ -193,6 +204,13 @@ public abstract class Setting<T> implements IGetter<T>, ISerializable<T> {
 
         public B defaultValue(V defaultValue) {
             this.defaultValue = defaultValue;
+            this.defaultValueSupplier = () -> defaultValue;
+            return (B) this;
+        }
+
+        public B defaultValue(Supplier<V> defaultValue) {
+            this.defaultValue = defaultValue.get();
+            this.defaultValueSupplier = defaultValue;
             return (B) this;
         }
 

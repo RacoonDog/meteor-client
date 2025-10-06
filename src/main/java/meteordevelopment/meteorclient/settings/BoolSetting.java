@@ -9,11 +9,12 @@ import net.minecraft.nbt.NbtCompound;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class BoolSetting extends Setting<Boolean> {
     private static final List<String> SUGGESTIONS = List.of("true", "false", "toggle");
 
-    private BoolSetting(String name, String description, Boolean defaultValue, Consumer<Boolean> onChanged, Consumer<Setting<Boolean>> onModuleActivated, IVisible visible) {
+    private BoolSetting(String name, String description, Supplier<Boolean> defaultValue, Consumer<Boolean> onChanged, Consumer<Setting<Boolean>> onModuleActivated, IVisible visible) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
     }
 
@@ -56,7 +57,7 @@ public class BoolSetting extends Setting<Boolean> {
 
         @Override
         public BoolSetting build() {
-            return new BoolSetting(name, description, defaultValue, onChanged, onModuleActivated, visible);
+            return new BoolSetting(name, description, defaultValueSupplier, onChanged, onModuleActivated, visible);
         }
     }
 }

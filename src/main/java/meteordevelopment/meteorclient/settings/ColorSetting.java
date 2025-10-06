@@ -11,11 +11,12 @@ import net.minecraft.nbt.NbtCompound;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ColorSetting extends Setting<SettingColor> {
     private static final List<String> SUGGESTIONS = List.of("0 0 0 255", "225 25 25 255", "25 225 25 255", "25 25 225 255", "255 255 255 255");
 
-    public ColorSetting(String name, String description, SettingColor defaultValue, Consumer<SettingColor> onChanged, Consumer<Setting<SettingColor>> onModuleActivated, IVisible visible) {
+    public ColorSetting(String name, String description, Supplier<SettingColor> defaultValue, Consumer<SettingColor> onChanged, Consumer<Setting<SettingColor>> onModuleActivated, IVisible visible) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
     }
 
@@ -31,8 +32,8 @@ public class ColorSetting extends Setting<SettingColor> {
 
     @Override
     public void resetImpl() {
-        if (value == null) value = new SettingColor(defaultValue);
-        else value.set(defaultValue);
+        if (value == null) value = new SettingColor(getDefaultValue());
+        else value.set(getDefaultValue());
     }
 
     @Override
@@ -68,7 +69,7 @@ public class ColorSetting extends Setting<SettingColor> {
 
         @Override
         public ColorSetting build() {
-            return new ColorSetting(name, description, defaultValue, onChanged, onModuleActivated, visible);
+            return new ColorSetting(name, description, defaultValueSupplier, onChanged, onModuleActivated, visible);
         }
 
         @Override

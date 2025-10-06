@@ -13,9 +13,10 @@ import net.minecraft.nbt.NbtElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ColorListSetting extends Setting<List<SettingColor>> {
-    public ColorListSetting(String name, String description, List<SettingColor> defaultValue, Consumer<List<SettingColor>> onChanged, Consumer<Setting<List<SettingColor>>> onModuleActivated, IVisible visible) {
+    public ColorListSetting(String name, String description, Supplier<List<SettingColor>> defaultValue, Consumer<List<SettingColor>> onChanged, Consumer<Setting<List<SettingColor>>> onModuleActivated, IVisible visible) {
         super(name, description, defaultValue, onChanged, onModuleActivated, visible);
     }
 
@@ -40,6 +41,8 @@ public class ColorListSetting extends Setting<List<SettingColor>> {
 
     @Override
     protected void resetImpl() {
+        List<SettingColor> defaultValue = this.getDefaultValue();
+
         value = new ArrayList<>(defaultValue.size());
 
         for (SettingColor settingColor : defaultValue) {
@@ -72,7 +75,7 @@ public class ColorListSetting extends Setting<List<SettingColor>> {
 
         @Override
         public ColorListSetting build() {
-            return new ColorListSetting(name, description, defaultValue, onChanged, onModuleActivated, visible);
+            return new ColorListSetting(name, description, defaultValueSupplier, onChanged, onModuleActivated, visible);
         }
     }
 }

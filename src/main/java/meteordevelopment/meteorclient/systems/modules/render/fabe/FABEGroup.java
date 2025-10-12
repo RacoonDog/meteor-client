@@ -50,14 +50,6 @@ public class FABEGroup {
         chunk.remove(other);
     }
 
-    public TracerLine getTracerLine(ChunkPos pos) {
-        return new TracerLine(
-            pos.getStartX() + (double) x / count + 0.5d,
-            (double) y / count + 0.5d,
-            pos.getStartZ() + (double) z / count + 0.5d
-        );
-    }
-
     public static void mesh(FABEMeshBuilder builder, ESPBlockData blockData, ChunkPos pos, List<FABEGroup> groups) {
         double minX = Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;
@@ -70,7 +62,12 @@ public class FABEGroup {
         SettingColor sideColor = blockData.sideColor;
 
         for (FABEGroup group : groups) {
-            builder.tracerLine(group.getTracerLine(pos));
+            builder.tracerLine(
+                blockData,
+                pos.getStartX() + (double) group.x / group.count + 0.5d,
+                (double) group.y / group.count + 0.5d,
+                pos.getStartZ() + (double) group.z / group.count + 0.5d
+            );
 
             for (FABEBlock espBlock : group.blocks) {
                 double x1 = espBlock.x;
@@ -88,28 +85,32 @@ public class FABEGroup {
                 maxZ = Math.max(maxZ, z2);
 
                 // lines
-                if (!espBlock.west && !espBlock.north) builder.yLine(lineColor, y1, y2, x1, z1);
-                if (!espBlock.west && !espBlock.south) builder.yLine(lineColor, y1, y2, x1, z2);
-                if (!espBlock.east && !espBlock.north) builder.yLine(lineColor, y1, y2, x2, z1);
-                if (!espBlock.east && !espBlock.south) builder.yLine(lineColor, y1, y2, x2, z2);
+                if (blockData.shapeMode.lines()) {
+                    if (!espBlock.west && !espBlock.north) builder.yLine(lineColor, y1, y2, x1, z1);
+                    if (!espBlock.west && !espBlock.south) builder.yLine(lineColor, y1, y2, x1, z2);
+                    if (!espBlock.east && !espBlock.north) builder.yLine(lineColor, y1, y2, x2, z1);
+                    if (!espBlock.east && !espBlock.south) builder.yLine(lineColor, y1, y2, x2, z2);
 
-                if (!espBlock.west && !espBlock.down)  builder.zLine(lineColor, z1, z2, x1, y1);
-                if (!espBlock.east && !espBlock.down)  builder.zLine(lineColor, z1, z2, x2, y1);
-                if (!espBlock.north && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z1);
-                if (!espBlock.south && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z2);
+                    if (!espBlock.west && !espBlock.down)  builder.zLine(lineColor, z1, z2, x1, y1);
+                    if (!espBlock.east && !espBlock.down)  builder.zLine(lineColor, z1, z2, x2, y1);
+                    if (!espBlock.north && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z1);
+                    if (!espBlock.south && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z2);
 
-                if (!espBlock.west && !espBlock.up)  builder.zLine(lineColor, z1, z2, x1, y2);
-                if (!espBlock.east && !espBlock.up)  builder.zLine(lineColor, z1, z2, x2, y2);
-                if (!espBlock.north && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z1);
-                if (!espBlock.south && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z2);
+                    if (!espBlock.west && !espBlock.up)  builder.zLine(lineColor, z1, z2, x1, y2);
+                    if (!espBlock.east && !espBlock.up)  builder.zLine(lineColor, z1, z2, x2, y2);
+                    if (!espBlock.north && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z1);
+                    if (!espBlock.south && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z2);
+                }
 
                 // faces
-                if (!espBlock.up)    builder.quadHorizontal(sideColor, x1, y2, z1, x2, z2);
-                if (!espBlock.down)  builder.quadHorizontal(sideColor, x1, y1, z1, x2, z2);
-                if (!espBlock.north) builder.quadVertical(sideColor, x1, y1, z1, x2, y2, z1);
-                if (!espBlock.south) builder.quadVertical(sideColor, x1, y1, z2, x2, y2, z2);
-                if (!espBlock.east)  builder.quadVertical(sideColor, x2, y1, z1, x2, y2, z2);
-                if (!espBlock.west)  builder.quadVertical(sideColor, x1, y1, z1, x1, y2, z2);
+                if (blockData.shapeMode.sides()) {
+                    if (!espBlock.up)    builder.quadHorizontal(sideColor, x1, y2, z1, x2, z2);
+                    if (!espBlock.down)  builder.quadHorizontal(sideColor, x1, y1, z1, x2, z2);
+                    if (!espBlock.north) builder.quadVertical(sideColor, x1, y1, z1, x2, y2, z1);
+                    if (!espBlock.south) builder.quadVertical(sideColor, x1, y1, z2, x2, y2, z2);
+                    if (!espBlock.east)  builder.quadVertical(sideColor, x2, y1, z1, x2, y2, z2);
+                    if (!espBlock.west)  builder.quadVertical(sideColor, x1, y1, z1, x1, y2, z2);
+                }
             }
         }
 

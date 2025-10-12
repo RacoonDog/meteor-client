@@ -19,6 +19,7 @@ import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.ChunkDataEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.mixin.WorldRendererAccessor;
+import meteordevelopment.meteorclient.renderer.GpuMesh;
 import meteordevelopment.meteorclient.renderer.MeshUniforms;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -64,7 +65,7 @@ public class FastAsyncBlockESP extends Module {
     private final Setting<List<Block>> blocks = sgGeneral.add(new BlockListSetting.Builder()
         .name("blocks")
         .description("Blocks to search for.")
-        .onChanged(blocks1 -> {
+        .onChanged(v -> {
             if (isActive() && Utils.canUpdate()) onActivate();
         })
         .build()
@@ -82,6 +83,9 @@ public class FastAsyncBlockESP extends Module {
                 new SettingColor(0, 255, 200, 125)
             )
         )
+        .onChanged(v -> {
+            if (isActive() && Utils.canUpdate()) onActivate();
+        })
         .build()
     );
 
@@ -89,6 +93,9 @@ public class FastAsyncBlockESP extends Module {
         .name("block-configs")
         .description("Config for each block.")
         .defaultData(defaultBlockConfig)
+        .onChanged(v -> {
+            if (isActive() && Utils.canUpdate()) onActivate();
+        })
         .build()
     );
 
@@ -210,6 +217,12 @@ public class FastAsyncBlockESP extends Module {
 
             // mesh blocks
             try {
+                FABEMeshData mesh = schunk.mesh(this);
+
+                if (mesh.lineBuilder().getIndicesCount() == 0 && mesh.faceBuilder().getIndicesCount() == 0) {
+                    return;
+                }
+
                 queuedMeshes.add(new ObjectObjectImmutablePair<>(chunk.getPos(), schunk.mesh(this)));
             } catch (Throwable t) {
                 MeteorClient.LOG.error("Uh oh!", t);
@@ -276,8 +289,17 @@ public class FastAsyncBlockESP extends Module {
         // upload buffers
         while (queuedMeshes.peek() != null) {
             Pair<ChunkPos, FABEMeshData> chunk = queuedMeshes.poll();
+            FABEMeshData mesh = chunk.right();
 
-            FABEGpuGroupMesh gpuMesh = FABEGpuGroupMesh.upload(chunk.value());
+            @Nullable GpuMesh lineMesh = mesh.lineBuilder().getIndicesCount() != 0 ? GpuMesh.upload(mesh.lineBuilder()) : null;
+            @Nullable GpuMesh faceMesh = mesh.faceBuilder().getIndicesCount() != 0 ? GpuMesh.upload(mesh.faceBuilder()) : null;
+
+            FABEGpuGroupMesh gpuMesh = new FABEGpuGroupMesh(
+                mesh.aabb(),
+                mesh.tracerLines(),
+                lineMesh,
+                faceMesh
+            );
 
             @Nullable FABEGpuGroupMesh oldMesh = meshesByChunk.put(chunk.key().toLong(), gpuMesh);
             if (oldMesh != null) {
@@ -317,7 +339,7 @@ public class FastAsyncBlockESP extends Module {
 
             GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset);
 
-            {
+            if (mesh.lines() != null) {
                 RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Lines", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
 
                 pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
@@ -330,7 +352,7 @@ public class FastAsyncBlockESP extends Module {
                 pass.close();
             }
 
-            {
+            if (mesh.faces() != null) {
                 RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Faces", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
 
                 pass.setPipeline(MeteorRenderPipelines.FABE);
@@ -348,15 +370,16 @@ public class FastAsyncBlockESP extends Module {
 
         // render tracers
         for (FABEGpuGroupMesh mesh : meshesByChunk.values()) {
-            //ESPBlockData data = mesh.blockData(); todo
 
-            if (tracers.get() /*&& data.tracer*/) {
+            if (tracers.get()) {
                 for (TracerLine tracerLine : mesh.tracerLines()) {
-                    event.renderer.line(
-                        RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z,
-                        tracerLine.x(), tracerLine.y(), tracerLine.z(),
-                        /*data.tracerColor*/ defaultBlockConfig.get().tracerColor
-                    );
+                    if (tracerLine.blockData().tracer) {
+                        event.renderer.line(
+                            RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z,
+                            tracerLine.x(), tracerLine.y(), tracerLine.z(),
+                            tracerLine.blockData().tracerColor
+                        );
+                    }
                 }
             }
         }

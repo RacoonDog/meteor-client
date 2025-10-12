@@ -5,4 +5,6 @@
 
 package meteordevelopment.meteorclient.systems.modules.render.fabe;
 
-public record TracerLine(double x, double y, double z) {}
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
+
+public record TracerLine(ESPBlockData blockData, double x, double y, double z) {}

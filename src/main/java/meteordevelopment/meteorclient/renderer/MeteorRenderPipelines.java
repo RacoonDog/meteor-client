@@ -65,7 +65,7 @@ public abstract class MeteorRenderPipelines {
 
     public static final RenderPipeline FABE = add(new ExtendedRenderPipelineBuilder(FABE_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/fabe"))
-        .withVertexFormat(VertexFormats.POSITION, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
         .withVertexShader(MeteorClient.identifier("shaders/fabe.vert"))
         .withFragmentShader(MeteorClient.identifier("shaders/fabe.frag"))
         .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
@@ -77,7 +77,7 @@ public abstract class MeteorRenderPipelines {
 
     public static final RenderPipeline FABE_LINES = add(new ExtendedRenderPipelineBuilder(FABE_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/fabe_lines"))
-        .withVertexFormat(VertexFormats.POSITION, VertexFormat.DrawMode.DEBUG_LINES)
+        .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES)
         .withVertexShader(MeteorClient.identifier("shaders/fabe.vert"))
         .withFragmentShader(MeteorClient.identifier("shaders/fabe.frag"))
         .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)

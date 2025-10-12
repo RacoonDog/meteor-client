@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
 import meteordevelopment.meteorclient.renderer.MeshBuilder;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.util.math.Box;
 
@@ -32,8 +33,8 @@ public class FABEMeshBuilder {
         }
     }
 
-    public void tracerLine(TracerLine tracerLine) {
-        this.tracerLines.add(tracerLine);
+    public void tracerLine(ESPBlockData blockData, double x, double y, double z) {
+        this.tracerLines.add(new TracerLine(blockData, x, y, z));
     }
 
     public void xLine(SettingColor color, double minX, double maxX, double y, double z) {

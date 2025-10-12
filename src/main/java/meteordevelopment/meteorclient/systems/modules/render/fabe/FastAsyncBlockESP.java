@@ -46,7 +46,6 @@ import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.PalettedContainer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.List;
 import java.util.Map;
@@ -115,8 +114,8 @@ public class FastAsyncBlockESP extends Module {
        return t;
     });
 
-    private final Queue<Pair<ChunkPos, List<FABEMeshData>>> queuedMeshes = new ConcurrentLinkedQueue<>();
-    private final Long2ObjectMap<List<FABEGpuGroupMesh>> meshesByChunk = new Long2ObjectOpenHashMap<>();
+    private final Queue<Pair<ChunkPos, FABEMeshData>> queuedMeshes = new ConcurrentLinkedQueue<>();
+    private final Long2ObjectMap<FABEGpuGroupMesh> meshesByChunk = new Long2ObjectOpenHashMap<>();
 
     private Dimension lastDimension;
 
@@ -150,10 +149,8 @@ public class FastAsyncBlockESP extends Module {
     private void clearChunks() {
         queuedMeshes.clear();
 
-        for (List<FABEGpuGroupMesh> meshes : meshesByChunk.values()) {
-            for (FABEGpuGroupMesh mesh : meshes) {
-                mesh.close();
-            }
+        for (FABEGpuGroupMesh mesh : meshesByChunk.values()) {
+            mesh.close();
         }
         meshesByChunk.clear();
     }
@@ -213,7 +210,7 @@ public class FastAsyncBlockESP extends Module {
 
             // mesh blocks
             try {
-                queuedMeshes.add(new ObjectObjectImmutablePair<>(chunk.getPos(), schunk.mesh()));
+                queuedMeshes.add(new ObjectObjectImmutablePair<>(chunk.getPos(), schunk.mesh(this)));
             } catch (Throwable t) {
                 MeteorClient.LOG.error("Uh oh!", t);
             }
@@ -260,14 +257,12 @@ public class FastAsyncBlockESP extends Module {
         if (lastDimension != dimension) onActivate();
         else {
             for (var it = Long2ObjectMaps.fastIterator(meshesByChunk); it.hasNext();) {
-                Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes = it.next();
-                int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
-                int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
+                Long2ObjectMap.Entry<FABEGpuGroupMesh> chunkMesh = it.next();
+                int chunkX = ChunkPos.getPackedX(chunkMesh.getLongKey());
+                int chunkZ = ChunkPos.getPackedZ(chunkMesh.getLongKey());
 
                 if (isOutOfRange(chunkX, chunkZ)) {
-                    for (FABEGpuGroupMesh old : chunkMeshes.getValue()) {
-                        old.close();
-                    }
+                    chunkMesh.getValue().close();
                     it.remove();
                 }
             }
@@ -280,15 +275,13 @@ public class FastAsyncBlockESP extends Module {
     private void onRender(Render3DEvent event) {
         // upload buffers
         while (queuedMeshes.peek() != null) {
-            Pair<ChunkPos, List<FABEMeshData>> chunk = queuedMeshes.poll();
+            Pair<ChunkPos, FABEMeshData> chunk = queuedMeshes.poll();
 
-            List<FABEGpuGroupMesh> gpuMeshes = chunk.value().stream().map(FABEGpuGroupMesh::upload).toList();
+            FABEGpuGroupMesh gpuMesh = FABEGpuGroupMesh.upload(chunk.value());
 
-            @Nullable List<FABEGpuGroupMesh> oldMeshes = meshesByChunk.put(chunk.key().toLong(), gpuMeshes);
-            if (oldMeshes != null) {
-                for (FABEGpuGroupMesh old : oldMeshes) {
-                    old.close();
-                }
+            @Nullable FABEGpuGroupMesh oldMesh = meshesByChunk.put(chunk.key().toLong(), gpuMesh);
+            if (oldMesh != null) {
+                oldMesh.close();
             }
         }
 
@@ -306,9 +299,9 @@ public class FastAsyncBlockESP extends Module {
 
         GpuBufferSlice meshData = MeshUniforms.write(RenderUtils.projection, RenderSystem.getModelViewStack());
 
-        for (Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes : Long2ObjectMaps.fastIterable(meshesByChunk)) {
-            int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
-            int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
+        for (Long2ObjectMap.Entry<FABEGpuGroupMesh> chunkMesh : Long2ObjectMaps.fastIterable(meshesByChunk)) {
+            int chunkX = ChunkPos.getPackedX(chunkMesh.getLongKey());
+            int chunkZ = ChunkPos.getPackedZ(chunkMesh.getLongKey());
 
             Vector3f chunkOffset = new Vector3f(
                 (float) (ChunkSectionPos.getBlockCoord(chunkX) - cameraPos.x),
@@ -316,75 +309,65 @@ public class FastAsyncBlockESP extends Module {
                 (float) (ChunkSectionPos.getBlockCoord(chunkZ) - cameraPos.z)
             );
 
-            for (FABEGpuGroupMesh mesh : chunkMeshes.getValue()) {
-                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+            FABEGpuGroupMesh mesh = chunkMesh.getValue();
 
-                if (frustumCulling.get() && !frustum.isVisible(mesh.aabb())) {
-                    continue;
-                }
+            if (frustumCulling.get() && !frustum.isVisible(mesh.aabb())) {
+                continue;
+            }
 
-                if (data.shapeMode.lines()) {
-                    Vector4f color = new Vector4f(data.lineColor.r, data.lineColor.g, data.lineColor.b, data.lineColor.a);
-                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+            GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset);
 
-                    RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Lines", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+            {
+                RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Lines", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
 
-                    pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
-                    pass.setUniform("MeshData", meshData);
-                    pass.setUniform("FABEData", fabeMeshData);
+                pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
+                pass.setUniform("MeshData", meshData);
+                pass.setUniform("FABEData", fabeMeshData);
 
-                    mesh.lines().bind(pass);
+                mesh.lines().bind(pass);
 
-                    pass.drawIndexed(0, 0, mesh.lines().indexCount(), 1);
-                    pass.close();
-                }
+                pass.drawIndexed(0, 0, mesh.lines().indexCount(), 1);
+                pass.close();
+            }
 
-                if (data.shapeMode.sides()) {
-                    Vector4f color = new Vector4f(data.sideColor.r, data.sideColor.g, data.sideColor.b, data.sideColor.a);
-                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+            {
+                RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Faces", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
 
-                    RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Faces", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+                pass.setPipeline(MeteorRenderPipelines.FABE);
+                pass.setUniform("MeshData", meshData);
+                pass.setUniform("FABEData", fabeMeshData);
 
-                    pass.setPipeline(MeteorRenderPipelines.FABE);
-                    pass.setUniform("MeshData", meshData);
-                    pass.setUniform("FABEData", fabeMeshData);
+                mesh.faces().bind(pass);
 
-                    mesh.faces().bind(pass);
-
-                    pass.drawIndexed(0, 0, mesh.faces().indexCount(), 1);
-                    pass.close();
-                }
+                pass.drawIndexed(0, 0, mesh.faces().indexCount(), 1);
+                pass.close();
             }
         }
 
         RenderSystem.getModelViewStack().popMatrix();
 
         // render tracers
-        for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
-            for (FABEGpuGroupMesh mesh : chunkMeshes) {
-                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+        for (FABEGpuGroupMesh mesh : meshesByChunk.values()) {
+            //ESPBlockData data = mesh.blockData(); todo
 
-                if (tracers.get() && data.tracer) {
-                    for (TracerLine tracerLine : mesh.tracerLines()) {
-                        event.renderer.line(
-                            RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z,
-                            tracerLine.x(), tracerLine.y(), tracerLine.z(),
-                            data.tracerColor
-                        );
-                    }
+            if (tracers.get() /*&& data.tracer*/) {
+                for (TracerLine tracerLine : mesh.tracerLines()) {
+                    event.renderer.line(
+                        RenderUtils.center.x, RenderUtils.center.y, RenderUtils.center.z,
+                        tracerLine.x(), tracerLine.y(), tracerLine.z(),
+                        /*data.tracerColor*/ defaultBlockConfig.get().tracerColor
+                    );
                 }
             }
         }
     }
 
+    public ESPBlockData getBlockData(Block block) {
+        return blockConfigs.get().getOrDefault(block, defaultBlockConfig.get());
+    }
+
     @Override
     public String getInfoString() {
-        int meshes = 0;
-
-        for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
-            meshes += chunkMeshes.size();
-        }
-
-        return Integer.toString(meshes);
+        return Integer.toString(meshesByChunk.size());
     }
 }

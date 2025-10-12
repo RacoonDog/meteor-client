@@ -1,6 +1,7 @@
 #version 330 core
 
 layout (location = 0) in vec4 pos;
+layout (location = 1) in vec4 color;
 
 layout (std140) uniform MeshData {
     mat4 u_Proj;
@@ -9,10 +10,12 @@ layout (std140) uniform MeshData {
 
 layout (std140) uniform FABEData {
     vec4 u_Offset;
-    vec4 u_Color;
 };
 
+out vec4 v_Color;
+
 void main() {
-    vec4 theRealPosition = pos + u_Offset;
-    gl_Position = u_Proj * u_ModelView * theRealPosition;
+    gl_Position = u_Proj * u_ModelView * (pos + u_Offset);
+
+    v_Color = color;
 }

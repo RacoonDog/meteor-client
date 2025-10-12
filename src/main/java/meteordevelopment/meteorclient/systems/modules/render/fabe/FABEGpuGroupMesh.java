@@ -5,15 +5,15 @@
 
 package meteordevelopment.meteorclient.systems.modules.render.fabe;
 import meteordevelopment.meteorclient.renderer.GpuMesh;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
 import net.minecraft.block.Block;
 import net.minecraft.util.math.Box;
 
 import java.util.List;
 
-public record FABEGpuGroupMesh(Block block, Box aabb, List<TracerLine> tracerLines, GpuMesh lines, GpuMesh faces) {
+public record FABEGpuGroupMesh(Box aabb, List<TracerLine> tracerLines, GpuMesh lines, GpuMesh faces) {
     public static FABEGpuGroupMesh upload(FABEMeshData mesh) {
         return new FABEGpuGroupMesh(
-            mesh.block(),
             mesh.aabb(),
             mesh.tracerLines(),
             GpuMesh.upload(mesh.lineBuilder()),

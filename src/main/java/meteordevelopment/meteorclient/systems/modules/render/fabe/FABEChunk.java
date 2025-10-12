@@ -8,6 +8,7 @@ package meteordevelopment.meteorclient.systems.modules.render.fabe;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -133,13 +134,16 @@ public class FABEChunk {
         return this.groups.isEmpty();
     }
 
-    public List<FABEMeshData> mesh() {
-        ObjectArrayList<FABEMeshData> meshes = new ObjectArrayList<>();
+    public FABEMeshData mesh(FastAsyncBlockESP module) {
+        FABEMeshBuilder builder = new FABEMeshBuilder();
 
         for (var entry : Reference2ObjectMaps.fastIterable(groups)) {
-            meshes.add(FABEGroup.mesh(entry.getKey(), chunk.getPos(), entry.getValue()));
+            Block block = entry.getKey();
+            ESPBlockData blockData = module.getBlockData(block);
+
+            FABEGroup.mesh(builder, blockData, chunk.getPos(), entry.getValue());
         }
 
-        return meshes;
+        return builder.write();
     }
 }

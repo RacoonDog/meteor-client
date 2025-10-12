@@ -7,47 +7,45 @@ package meteordevelopment.meteorclient.systems.modules.render.fabe;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.*;
 import meteordevelopment.meteorclient.renderer.MeshBuilder;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
-import net.minecraft.block.Block;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.util.math.Box;
 
 import java.util.Iterator;
 import java.util.List;
 
 public class FABEMeshBuilder {
-    private final Long2ObjectMap<List<Line>> xLines = new Long2ObjectOpenHashMap<>();
-    private final Long2ObjectMap<List<Line>> yLines = new Long2ObjectOpenHashMap<>();
-    private final Long2ObjectMap<List<Line>> zLines = new Long2ObjectOpenHashMap<>();
-    private final ObjectArrayList<Face> faces = new ObjectArrayList<>();
+    private final Object2ObjectMap<SettingColor, Long2ObjectMap<List<Line>>> xLines = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<SettingColor, Long2ObjectMap<List<Line>>> yLines = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<SettingColor, Long2ObjectMap<List<Line>>> zLines = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<SettingColor, ObjectArrayList<Face>> faces = new Object2ObjectOpenHashMap<>();
     private final ObjectArrayList<TracerLine> tracerLines = new ObjectArrayList<>();
-    private final Block block;
     private Box aabb;
 
-    public FABEMeshBuilder(Block block) {
-        this.block = block;
-    }
-
     public void box(Box aabb) {
-        this.aabb = aabb;
+        if (this.aabb == null) {
+            this.aabb = aabb;
+        } else {
+            this.aabb = this.aabb.union(aabb);
+        }
     }
 
     public void tracerLine(TracerLine tracerLine) {
         this.tracerLines.add(tracerLine);
     }
 
-    public void xLine(double minX, double maxX, double y, double z) {
-        combineLines(xLines, minX, maxX, y, z);
+    public void xLine(SettingColor color, double minX, double maxX, double y, double z) {
+        combineLines(xLines.computeIfAbsent(color, k -> new Long2ObjectOpenHashMap<>()), minX, maxX, y, z);
     }
 
-    public void yLine(double minY, double maxY, double x, double z) {
-        combineLines(yLines, minY, maxY, x, z);
+    public void yLine(SettingColor color, double minY, double maxY, double x, double z) {
+        combineLines(yLines.computeIfAbsent(color, k -> new Long2ObjectOpenHashMap<>()), minY, maxY, x, z);
     }
 
-    public void zLine(double minZ, double maxZ, double x, double y) {
-        combineLines(zLines, minZ, maxZ, x, y);
+    public void zLine(SettingColor color, double minZ, double maxZ, double x, double y) {
+        combineLines(zLines.computeIfAbsent(color, k -> new Long2ObjectOpenHashMap<>()), minZ, maxZ, x, y);
     }
 
     private void combineLines(Long2ObjectMap<List<Line>> axisLines, double min, double max, double c1, double c2) {
@@ -66,8 +64,9 @@ public class FABEMeshBuilder {
         lines.add(new Line(min, max, c1, c2));
     }
 
-    public void quadVertical(double x1, double y1, double z1, double x2, double y2, double z2) {
+    public void quadVertical(SettingColor color, double x1, double y1, double z1, double x2, double y2, double z2) {
         this.quad(
+            color,
             x1, y1, z1,
             x1, y2, z1,
             x2, y2, z2,
@@ -75,8 +74,9 @@ public class FABEMeshBuilder {
         );
     }
 
-    public void quadHorizontal(double x1, double y, double z1, double x2, double z2) {
+    public void quadHorizontal(SettingColor color, double x1, double y, double z1, double x2, double z2) {
         this.quad(
+            color,
             x1, y, z1,
             x1, y, z2,
             x2, y, z2,
@@ -84,8 +84,8 @@ public class FABEMeshBuilder {
         );
     }
 
-    private void quad(double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double x4, double y4, double z4) {
-        this.faces.add(new Face(
+    private void quad(SettingColor color, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double x4, double y4, double z4) {
+        this.faces.computeIfAbsent(color, k -> new ObjectArrayList<>()).add(new Face(
             x1, y1, z1,
             x2, y2, z2,
             x3, y3, z3,
@@ -107,42 +107,51 @@ public class FABEMeshBuilder {
         lineVertices.defaultReturnValue(-1);
         MeshBuilder lineBuilder = new MeshBuilder(MeteorRenderPipelines.FABE_LINES);
 
-        for (List<Line> lines : xLines.values()) {
-            lineBuilder.ensureCapacity(0, lines.size() * 2);
+        for (var entry : Object2ObjectMaps.fastIterable(xLines)) {
+            SettingColor color = entry.getKey();
+            for (List<Line> lines : entry.getValue().values()) {
+                lineBuilder.ensureCapacity(0, lines.size() * 2);
 
-            for (Line line : lines) {
-                int i1 = insertVertex(lineVertices, line.min(), line.c1(), line.c2());
-                int i2 = insertVertex(lineVertices, line.max(), line.c1(), line.c2());
+                for (Line line : lines) {
+                    int i1 = insertVertex(lineVertices, color, line.min(), line.c1(), line.c2());
+                    int i2 = insertVertex(lineVertices, color, line.max(), line.c1(), line.c2());
 
-                lineBuilder.line(i1, i2);
+                    lineBuilder.line(i1, i2);
+                }
             }
         }
 
-        for (List<Line> lines : yLines.values()) {
-            lineBuilder.ensureCapacity(0, lines.size() * 2);
+        for (var entry : Object2ObjectMaps.fastIterable(yLines)) {
+            SettingColor color = entry.getKey();
+            for (List<Line> lines : entry.getValue().values()) {
+                lineBuilder.ensureCapacity(0, lines.size() * 2);
 
-            for (Line line : lines) {
-                int i1 = insertVertex(lineVertices, line.c1(), line.min(), line.c2());
-                int i2 = insertVertex(lineVertices, line.c1(), line.max(), line.c2());
+                for (Line line : lines) {
+                    int i1 = insertVertex(lineVertices, color, line.c1(), line.min(), line.c2());
+                    int i2 = insertVertex(lineVertices, color, line.c1(), line.max(), line.c2());
 
-                lineBuilder.line(i1, i2);
+                    lineBuilder.line(i1, i2);
+                }
             }
         }
 
-        for (List<Line> lines : zLines.values()) {
-            lineBuilder.ensureCapacity(0, lines.size() * 2);
+        for (var entry : Object2ObjectMaps.fastIterable(zLines)) {
+            SettingColor color = entry.getKey();
+            for (List<Line> lines : entry.getValue().values()) {
+                lineBuilder.ensureCapacity(0, lines.size() * 2);
 
-            for (Line line : lines) {
-                int i1 = insertVertex(lineVertices, line.c1(), line.c2(), line.min());
-                int i2 = insertVertex(lineVertices, line.c1(), line.c2(), line.max());
+                for (Line line : lines) {
+                    int i1 = insertVertex(lineVertices, color, line.c1(), line.c2(), line.min());
+                    int i2 = insertVertex(lineVertices, color, line.c1(), line.c2(), line.max());
 
-                lineBuilder.line(i1, i2);
+                    lineBuilder.line(i1, i2);
+                }
             }
         }
 
         lineBuilder.ensureCapacity(lineVertices.size(), 0);
         for (Vertex vertex : lineVertices.keySet()) {
-            lineBuilder.rawVec3(vertex.x(), vertex.y(), vertex.z()).next();
+            lineBuilder.rawVec3(vertex.x(), vertex.y(), vertex.z()).color(vertex.color()).next();
         }
 
         // deduplicate face vertices
@@ -150,25 +159,28 @@ public class FABEMeshBuilder {
         Object2IntLinkedOpenHashMap<Vertex> faceVertices = new Object2IntLinkedOpenHashMap<>();
         faceVertices.defaultReturnValue(-1);
         MeshBuilder faceBuilder = new MeshBuilder(MeteorRenderPipelines.FABE);
-        faceBuilder.ensureCapacity(0, faces.size() * 6);
 
-        for (Face face : faces) {
-            int i1 = insertVertex(faceVertices, face.x1(), face.y1(), face.z1());
-            int i2 = insertVertex(faceVertices, face.x2(), face.y2(), face.z2());
-            int i3 = insertVertex(faceVertices, face.x3(), face.y3(), face.z3());
-            int i4 = insertVertex(faceVertices, face.x4(), face.y4(), face.z4());
+        for (var entry : Object2ObjectMaps.fastIterable(faces)) {
+            faceBuilder.ensureCapacity(0, entry.getValue().size() * 6);
 
-            faceBuilder.quad(i1, i2, i3, i4);
+            SettingColor color = entry.getKey();
+            for (Face face : entry.getValue()) {
+                int i1 = insertVertex(faceVertices, color, face.x1(), face.y1(), face.z1());
+                int i2 = insertVertex(faceVertices, color, face.x2(), face.y2(), face.z2());
+                int i3 = insertVertex(faceVertices, color, face.x3(), face.y3(), face.z3());
+                int i4 = insertVertex(faceVertices, color, face.x4(), face.y4(), face.z4());
+
+                faceBuilder.quad(i1, i2, i3, i4);
+            }
         }
 
         faceBuilder.ensureCapacity(faceVertices.size(), 0);
 
         for (Vertex vertex : faceVertices.keySet()) {
-            faceBuilder.rawVec3(vertex.x(), vertex.y(), vertex.z()).next();
+            faceBuilder.rawVec3(vertex.x(), vertex.y(), vertex.z()).color(vertex.color()).next();
         }
 
         return new FABEMeshData(
-            block,
             aabb,
             tracerLines,
             lineBuilder,
@@ -176,13 +188,13 @@ public class FABEMeshBuilder {
         );
     }
 
-    private int insertVertex(Object2IntLinkedOpenHashMap<Vertex> vertices, double x, double y, double z) {
+    private int insertVertex(Object2IntLinkedOpenHashMap<Vertex> vertices, SettingColor color, double x, double y, double z) {
         int size = vertices.size();
-        int retVal = vertices.putIfAbsent(new Vertex(x, y, z), size);
+        int retVal = vertices.putIfAbsent(new Vertex(color, x, y, z), size);
         return retVal != -1 ? retVal : size;
     }
 
-    public record Vertex(double x, double y, double z) {}
+    public record Vertex(SettingColor color, double x, double y, double z) {}
     public record Line(double min, double max, double c1, double c2) {}
     public record Face(double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double x4, double y4, double z4) {}
 }

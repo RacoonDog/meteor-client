@@ -6,6 +6,8 @@
 package meteordevelopment.meteorclient.systems.modules.render.fabe;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.block.Block;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
@@ -56,9 +58,7 @@ public class FABEGroup {
         );
     }
 
-    public static FABEMeshData mesh(Block blockType, ChunkPos pos, List<FABEGroup> groups) {
-        FABEMeshBuilder builder = new FABEMeshBuilder(blockType);
-
+    public static void mesh(FABEMeshBuilder builder, ESPBlockData blockData, ChunkPos pos, List<FABEGroup> groups) {
         double minX = Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;
         double minZ = Double.MAX_VALUE;
@@ -66,13 +66,16 @@ public class FABEGroup {
         double maxY = Double.MIN_VALUE;
         double maxZ = Double.MIN_VALUE;
 
+        SettingColor lineColor = blockData.lineColor;
+        SettingColor sideColor = blockData.sideColor;
+
         for (FABEGroup group : groups) {
             builder.tracerLine(group.getTracerLine(pos));
 
-            for (FABEBlock block : group.blocks) {
-                double x1 = block.x;
-                double y1 = block.y;
-                double z1 = block.z;
+            for (FABEBlock espBlock : group.blocks) {
+                double x1 = espBlock.x;
+                double y1 = espBlock.y;
+                double z1 = espBlock.z;
                 double x2 = x1 + 1;
                 double y2 = y1 + 1;
                 double z2 = z1 + 1;
@@ -85,28 +88,28 @@ public class FABEGroup {
                 maxZ = Math.max(maxZ, z2);
 
                 // lines
-                if (!block.west && !block.north) builder.yLine(y1, y2, x1, z1);
-                if (!block.west && !block.south) builder.yLine(y1, y2, x1, z2);
-                if (!block.east && !block.north) builder.yLine(y1, y2, x2, z1);
-                if (!block.east && !block.south) builder.yLine(y1, y2, x2, z2);
+                if (!espBlock.west && !espBlock.north) builder.yLine(lineColor, y1, y2, x1, z1);
+                if (!espBlock.west && !espBlock.south) builder.yLine(lineColor, y1, y2, x1, z2);
+                if (!espBlock.east && !espBlock.north) builder.yLine(lineColor, y1, y2, x2, z1);
+                if (!espBlock.east && !espBlock.south) builder.yLine(lineColor, y1, y2, x2, z2);
 
-                if (!block.west && !block.down)  builder.zLine(z1, z2, x1, y1);
-                if (!block.east && !block.down)  builder.zLine(z1, z2, x2, y1);
-                if (!block.north && !block.down) builder.xLine(x1, x2, y1, z1);
-                if (!block.south && !block.down) builder.xLine(x1, x2, y1, z2);
+                if (!espBlock.west && !espBlock.down)  builder.zLine(lineColor, z1, z2, x1, y1);
+                if (!espBlock.east && !espBlock.down)  builder.zLine(lineColor, z1, z2, x2, y1);
+                if (!espBlock.north && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z1);
+                if (!espBlock.south && !espBlock.down) builder.xLine(lineColor, x1, x2, y1, z2);
 
-                if (!block.west && !block.up)  builder.zLine(z1, z2, x1, y2);
-                if (!block.east && !block.up)  builder.zLine(z1, z2, x2, y2);
-                if (!block.north && !block.up) builder.xLine(x1, x2, y2, z1);
-                if (!block.south && !block.up) builder.xLine(x1, x2, y2, z2);
+                if (!espBlock.west && !espBlock.up)  builder.zLine(lineColor, z1, z2, x1, y2);
+                if (!espBlock.east && !espBlock.up)  builder.zLine(lineColor, z1, z2, x2, y2);
+                if (!espBlock.north && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z1);
+                if (!espBlock.south && !espBlock.up) builder.xLine(lineColor, x1, x2, y2, z2);
 
                 // faces
-                if (!block.up)    builder.quadHorizontal(x1, y2, z1, x2, z2);
-                if (!block.down)  builder.quadHorizontal(x1, y1, z1, x2, z2);
-                if (!block.north) builder.quadVertical(x1, y1, z1, x2, y2, z1);
-                if (!block.south) builder.quadVertical(x1, y1, z2, x2, y2, z2);
-                if (!block.east)  builder.quadVertical(x2, y1, z1, x2, y2, z2);
-                if (!block.west)  builder.quadVertical(x1, y1, z1, x1, y2, z2);
+                if (!espBlock.up)    builder.quadHorizontal(sideColor, x1, y2, z1, x2, z2);
+                if (!espBlock.down)  builder.quadHorizontal(sideColor, x1, y1, z1, x2, z2);
+                if (!espBlock.north) builder.quadVertical(sideColor, x1, y1, z1, x2, y2, z1);
+                if (!espBlock.south) builder.quadVertical(sideColor, x1, y1, z2, x2, y2, z2);
+                if (!espBlock.east)  builder.quadVertical(sideColor, x2, y1, z1, x2, y2, z2);
+                if (!espBlock.west)  builder.quadVertical(sideColor, x1, y1, z1, x1, y2, z2);
             }
         }
 
@@ -118,7 +121,5 @@ public class FABEGroup {
             maxY,
             maxZ + pos.getStartZ()
         ));
-
-        return builder.write();
     }
 }

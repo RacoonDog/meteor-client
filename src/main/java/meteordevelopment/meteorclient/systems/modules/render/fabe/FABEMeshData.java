@@ -5,13 +5,13 @@
 
 package meteordevelopment.meteorclient.systems.modules.render.fabe;
 import meteordevelopment.meteorclient.renderer.MeshBuilder;
+import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
 import net.minecraft.block.Block;
 import net.minecraft.util.math.Box;
 
 import java.util.List;
 
-public record FABEMeshData(Block block,
-                           Box aabb,
+public record FABEMeshData(Box aabb,
                            List<TracerLine> tracerLines,
                            MeshBuilder lineBuilder,
                            MeshBuilder faceBuilder) {}

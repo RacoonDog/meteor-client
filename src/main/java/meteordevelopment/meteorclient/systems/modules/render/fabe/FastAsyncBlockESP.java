@@ -5,13 +5,16 @@
 
 package meteordevelopment.meteorclient.systems.modules.render.fabe;
 
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
@@ -319,7 +322,10 @@ public class FastAsyncBlockESP extends Module {
         Vec3d cameraPos = mc.gameRenderer.getCamera().getPos();
         RenderSystem.getModelViewStack().translate(0, (float) -cameraPos.y, 0);
 
-        GpuBufferSlice meshData = MeshUniforms.write(RenderUtils.projection, RenderSystem.getModelViewStack());
+        List<RenderPass.RenderObject<GpuBufferSlice>> renderLines = new ObjectArrayList<>();
+        int largestLineIndex = 0;
+        List<RenderPass.RenderObject<GpuBufferSlice>> renderFaces = new ObjectArrayList<>();
+        int largestFaceIndex = 0;
 
         for (Long2ObjectMap.Entry<FABEGpuGroupMesh> chunkMesh : Long2ObjectMaps.fastIterable(meshesByChunk)) {
             int chunkX = ChunkPos.getPackedX(chunkMesh.getLongKey());
@@ -340,29 +346,73 @@ public class FastAsyncBlockESP extends Module {
             GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset);
 
             if (mesh.lines() != null) {
-                RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Lines", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+                int icount = mesh.lines().indexCount();
+                if (icount > largestLineIndex) {
+                    largestLineIndex = icount;
+                }
 
-                pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
-                pass.setUniform("MeshData", meshData);
-                pass.setUniform("FABEData", fabeMeshData);
-
-                mesh.lines().bind(pass);
-
-                pass.drawIndexed(0, 0, mesh.lines().indexCount(), 1);
-                pass.close();
+                renderLines.add(new RenderPass.RenderObject<>(
+                    0,
+                    mesh.lines().vertices(),
+                    mesh.lines().indices(),
+                    VertexFormat.IndexType.INT,
+                    0,
+                    mesh.lines().indexCount(),
+                    (nothing, uniformUploader) -> uniformUploader.upload("FABEData", fabeMeshData)
+                ));
             }
 
             if (mesh.faces() != null) {
-                RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "FABE Faces", MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty());
+                int icount = mesh.faces().indexCount();
+                if (icount > largestFaceIndex) {
+                    largestFaceIndex = icount;
+                }
 
+                renderFaces.add(new RenderPass.RenderObject<>(
+                    0,
+                    mesh.faces().vertices(),
+                    mesh.faces().indices(),
+                    VertexFormat.IndexType.INT,
+                    0,
+                    mesh.faces().indexCount(),
+                    (nothing, uniformUploader) -> uniformUploader.upload("FABEData", fabeMeshData)
+                ));
+            }
+        }
+
+        GpuBufferSlice meshData = MeshUniforms.write(RenderUtils.projection, RenderSystem.getModelViewStack());
+
+        if (!renderLines.isEmpty()) {
+            RenderSystem.ShapeIndexBuffer shapeIndexBuffer = RenderSystem.getSequentialBuffer(VertexFormat.DrawMode.DEBUG_LINES);
+            GpuBuffer gpuBuffer = shapeIndexBuffer.getIndexBuffer(largestLineIndex);
+            VertexFormat.IndexType indexType = shapeIndexBuffer.getIndexType();
+
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
+                () -> "FABE Lines",
+                MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(),
+                OptionalInt.empty()
+            )) {
+                pass.setPipeline(MeteorRenderPipelines.FABE_LINES);
+                pass.setUniform("MeshData", meshData);
+
+                pass.drawMultipleIndexed(renderLines, gpuBuffer, indexType, List.of("MeshData"), null);
+            }
+        }
+
+        if (!renderFaces.isEmpty()) {
+            RenderSystem.ShapeIndexBuffer shapeIndexBuffer = RenderSystem.getSequentialBuffer(VertexFormat.DrawMode.TRIANGLES);
+            GpuBuffer gpuBuffer = shapeIndexBuffer.getIndexBuffer(largestFaceIndex);
+            VertexFormat.IndexType indexType = shapeIndexBuffer.getIndexType();
+
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
+                () -> "FABE Faces",
+                MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(),
+                OptionalInt.empty()
+            )) {
                 pass.setPipeline(MeteorRenderPipelines.FABE);
                 pass.setUniform("MeshData", meshData);
-                pass.setUniform("FABEData", fabeMeshData);
 
-                mesh.faces().bind(pass);
-
-                pass.drawIndexed(0, 0, mesh.faces().indexCount(), 1);
-                pass.close();
+                pass.drawMultipleIndexed(renderFaces, gpuBuffer, indexType, List.of("MeshData"), null);
             }
         }
 

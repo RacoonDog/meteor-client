@@ -115,6 +115,11 @@ public class Asm {
         }
 
         @Override
+        public boolean couldTransformClass(MixinEnvironment mixinEnvironment, String s) {
+            return delegate.couldTransformClass(mixinEnvironment, s);
+        }
+
+        @Override
         public byte[] generateClass(MixinEnvironment environment, String name) {
             return delegate.generateClass(environment, name);
         }

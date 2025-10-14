@@ -33,7 +33,8 @@ public abstract class MeteorRenderPipelines {
         .buildSnippet();
 
     private static final RenderPipeline.Snippet FABE_UNIFORMS = RenderPipeline.builder(MESH_UNIFORMS)
-        .withUniform("FABEData", UniformType.UNIFORM_BUFFER)
+        .withUniform("FABEColor", UniformType.UNIFORM_BUFFER)
+        .withUniform("FABEPosition", UniformType.UNIFORM_BUFFER)
         .buildSnippet();
 
     // World

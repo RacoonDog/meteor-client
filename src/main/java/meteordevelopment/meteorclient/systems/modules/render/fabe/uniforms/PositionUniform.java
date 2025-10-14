@@ -17,14 +17,14 @@ public class PositionUniform {
         .putVec3()
         .get();
 
-    private static final Data DATA = new Data();
-    private static final DynamicUniformStorage<Data> STORAGE = new DynamicUniformStorage<>("Meteor - FABE Position UBO", SIZE, 16);
+    private final Data DATA = new Data();
+    private final DynamicUniformStorage<Data> STORAGE = new DynamicUniformStorage<>("Meteor - FABE Position UBO", SIZE, 16);
 
-    public static void flipFrame() {
+    public void flipFrame() {
         STORAGE.clear();
     }
 
-    public static GpuBufferSlice write(float xPosition, float yPosition, float zPosition) {
+    public GpuBufferSlice write(float xPosition, float yPosition, float zPosition) {
         DATA.xPosition = xPosition;
         DATA.yPosition = yPosition;
         DATA.zPosition = zPosition;

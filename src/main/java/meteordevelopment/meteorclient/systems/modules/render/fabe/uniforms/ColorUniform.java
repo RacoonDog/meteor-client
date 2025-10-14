@@ -18,14 +18,14 @@ public class ColorUniform {
         .putVec4()
         .get();
 
-    private static final Data DATA = new Data();
-    private static final DynamicUniformStorage<Data> STORAGE = new DynamicUniformStorage<>("Meteor - FABE Color UBO", SIZE, 16);
+    private final Data DATA = new Data();
+    private final DynamicUniformStorage<Data> STORAGE = new DynamicUniformStorage<>("Meteor - FABE Color UBO", SIZE, 16);
 
-    public static void flipFrame() {
+    public void clear() {
         STORAGE.clear();
     }
 
-    public static GpuBufferSlice write(SettingColor color) {
+    public GpuBufferSlice write(SettingColor color) {
         DATA.color = color;
 
         return STORAGE.write(DATA);

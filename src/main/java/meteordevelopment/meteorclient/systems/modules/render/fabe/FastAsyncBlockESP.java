@@ -85,6 +85,7 @@ public class FastAsyncBlockESP extends Module {
                 new SettingColor(0, 255, 200, 125)
             )
         )
+        .onChanged(v -> invalidateColours())
         .build()
     );
 
@@ -92,6 +93,7 @@ public class FastAsyncBlockESP extends Module {
         .name("block-configs")
         .description("Config for each block.")
         .defaultData(defaultBlockConfig)
+        .onChanged(v -> invalidateColours())
         .build()
     );
 
@@ -116,6 +118,10 @@ public class FastAsyncBlockESP extends Module {
        t.setUncaughtExceptionHandler((thread, throwable) -> MeteorClient.LOG.error("FABE worker uncaught exception", throwable));
        return t;
     });
+
+    private final PositionUniform positionUboBuffer = new PositionUniform();
+    private final ColorUniform colorUniformBuffer = new ColorUniform();
+    private final Reference2ObjectMap<SettingColor, GpuBufferSlice> colorUboCache = new Reference2ObjectOpenHashMap<>();
 
     private final Queue<Pair<ChunkPos, List<FABEMeshData>>> queuedMeshes = new ConcurrentLinkedQueue<>();
     private final Long2ObjectMap<List<FABEGpuGroupMesh>> meshesByChunk = new Long2ObjectOpenHashMap<>();
@@ -147,6 +153,10 @@ public class FastAsyncBlockESP extends Module {
     @Override
     public void onDeactivate() {
         clearChunks();
+
+        positionUboBuffer.flipFrame();
+        colorUniformBuffer.clear();
+        colorUboCache.clear();
     }
 
     private void clearChunks() {
@@ -165,6 +175,15 @@ public class FastAsyncBlockESP extends Module {
 
         defaultBlockConfig.get().tickRainbow();
         for (ESPBlockData blockData : blockConfigs.get().values()) blockData.tickRainbow();
+    }
+
+    private void invalidateColours() {
+        colorUniformBuffer.clear();
+        colorUboCache.clear();
+
+        for (List<FABEGpuGroupMesh> meshes : meshesByChunk.values()) {
+            meshes.replaceAll(fabeGpuGroupMesh -> fabeGpuGroupMesh.updateColour(this));
+        }
     }
 
     @EventHandler
@@ -284,7 +303,12 @@ public class FastAsyncBlockESP extends Module {
         while (queuedMeshes.peek() != null) {
             Pair<ChunkPos, List<FABEMeshData>> chunk = queuedMeshes.poll();
 
-            List<FABEGpuGroupMesh> gpuMeshes = chunk.value().stream().map(FABEGpuGroupMesh::upload).toList();
+            List<FABEMeshData> chunkData = chunk.value();
+            List<FABEGpuGroupMesh> gpuMeshes = new ObjectArrayList<>(chunkData.size());
+
+            for (FABEMeshData meshData : chunkData) {
+                gpuMeshes.add(FABEGpuGroupMesh.upload(meshData, this));
+            }
 
             @Nullable List<FABEGpuGroupMesh> oldMeshes = meshesByChunk.put(chunk.key().toLong(), gpuMeshes);
             if (oldMeshes != null) {
@@ -299,6 +323,8 @@ public class FastAsyncBlockESP extends Module {
         }
 
         // render lines & faces
+        positionUboBuffer.flipFrame();
+
         Frustum frustum = ((WorldRendererAccessor) mc.worldRenderer).meteor$getFrustum();
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().mul(event.matrices.peek().getPositionMatrix());
@@ -311,21 +337,18 @@ public class FastAsyncBlockESP extends Module {
         List<RenderPass.RenderObject<GpuBufferSlice>> renderFaces = new ObjectArrayList<>();
         int largestFaceIndex = 0;
 
-        int blockCount = blocks.get().size();
-        Reference2ObjectMap<SettingColor, GpuBufferSlice> colorUbos = blockCount <= 8 ? new Reference2ObjectArrayMap<>(blockCount) : new Reference2ObjectOpenHashMap<>(blockCount);
-
         for (Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes : Long2ObjectMaps.fastIterable(meshesByChunk)) {
             int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
             int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
 
-            GpuBufferSlice positionUbo = PositionUniform.write(
+            GpuBufferSlice positionUbo = positionUboBuffer.write(
                 (float) (ChunkSectionPos.getBlockCoord(chunkX) - cameraPos.x),
                 0f,
                 (float) (ChunkSectionPos.getBlockCoord(chunkZ) - cameraPos.z)
             );
 
             for (FABEGpuGroupMesh mesh : chunkMeshes.getValue()) {
-                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+                ESPBlockData data = getBlockData(mesh.block());
 
                 if (frustumCulling.get() && !frustum.isVisible(mesh.aabb())) {
                     continue;
@@ -337,7 +360,7 @@ public class FastAsyncBlockESP extends Module {
                         largestLineIndex = icount;
                     }
 
-                    GpuBufferSlice colorUbo = colorUbos.computeIfAbsent(data.lineColor, ColorUniform::write);
+                    GpuBufferSlice colorUbo = mesh.lineColorUbo();
 
                     renderLines.add(new RenderPass.RenderObject<>(
                         0,
@@ -359,7 +382,7 @@ public class FastAsyncBlockESP extends Module {
                         largestFaceIndex = icount;
                     }
 
-                    GpuBufferSlice colorUbo = colorUbos.computeIfAbsent(data.sideColor, ColorUniform::write);
+                    GpuBufferSlice colorUbo = mesh.sideColorUbo();
 
                     renderFaces.add(new RenderPass.RenderObject<>(
                         0,
@@ -416,7 +439,7 @@ public class FastAsyncBlockESP extends Module {
         // render tracers
         for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
             for (FABEGpuGroupMesh mesh : chunkMeshes) {
-                ESPBlockData data = blockConfigs.get().getOrDefault(mesh.block(), defaultBlockConfig.get());
+                ESPBlockData data = getBlockData(mesh.block());
 
                 if (tracers.get() && data.tracer) {
                     for (TracerLine tracerLine : mesh.tracerLines()) {
@@ -429,6 +452,14 @@ public class FastAsyncBlockESP extends Module {
                 }
             }
         }
+    }
+
+    public ESPBlockData getBlockData(Block block) {
+        return blockConfigs.get().getOrDefault(block, defaultBlockConfig.get());
+    }
+
+    public GpuBufferSlice getOrCreateColorUbo(SettingColor color) {
+        return colorUboCache.computeIfAbsent(color, colorUniformBuffer::write);
     }
 
     @Override

@@ -1,7 +1,6 @@
 #version 330 core
 
-layout (std140) uniform FABEData {
-    vec4 u_Offset;
+layout (std140) uniform FABEColor {
     vec4 u_Color;
 };
 

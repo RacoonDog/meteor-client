@@ -6,9 +6,10 @@
 package meteordevelopment.meteorclient.mixin;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import meteordevelopment.meteorclient.systems.modules.render.fabe.FABEMeshUniforms;
 import meteordevelopment.meteorclient.renderer.MeshUniforms;
 import meteordevelopment.meteorclient.systems.modules.render.Blur;
+import meteordevelopment.meteorclient.systems.modules.render.fabe.uniforms.ColorUniform;
+import meteordevelopment.meteorclient.systems.modules.render.fabe.uniforms.PositionUniform;
 import meteordevelopment.meteorclient.utils.render.postprocess.ChamsShader;
 import meteordevelopment.meteorclient.utils.render.postprocess.OutlineUniforms;
 import meteordevelopment.meteorclient.utils.render.postprocess.PostProcessShader;
@@ -21,7 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class RenderSystemMixin {
     @Inject(method = "flipFrame", at = @At("TAIL"))
     private static void meteor$flipFrame(CallbackInfo info) {
-        FABEMeshUniforms.flipFrame();
+        ColorUniform.flipFrame();
+        PositionUniform.flipFrame();
         MeshUniforms.flipFrame();
         Blur.flipFrame();
         PostProcessShader.flipFrame();

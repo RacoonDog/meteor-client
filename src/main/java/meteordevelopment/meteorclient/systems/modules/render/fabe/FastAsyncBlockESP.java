@@ -14,8 +14,7 @@ import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
+import it.unimi.dsi.fastutil.objects.*;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
@@ -29,6 +28,8 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData;
+import meteordevelopment.meteorclient.systems.modules.render.fabe.uniforms.ColorUniform;
+import meteordevelopment.meteorclient.systems.modules.render.fabe.uniforms.PositionUniform;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.RenderUtils;
@@ -48,8 +49,6 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.PalettedContainer;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.List;
 import java.util.Map;
@@ -312,11 +311,14 @@ public class FastAsyncBlockESP extends Module {
         List<RenderPass.RenderObject<GpuBufferSlice>> renderFaces = new ObjectArrayList<>();
         int largestFaceIndex = 0;
 
+        int blockCount = blocks.get().size();
+        Reference2ObjectMap<SettingColor, GpuBufferSlice> colorUbos = blockCount <= 8 ? new Reference2ObjectArrayMap<>(blockCount) : new Reference2ObjectOpenHashMap<>(blockCount);
+
         for (Long2ObjectMap.Entry<List<FABEGpuGroupMesh>> chunkMeshes : Long2ObjectMaps.fastIterable(meshesByChunk)) {
             int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
             int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
 
-            Vector3f chunkOffset = new Vector3f(
+            GpuBufferSlice positionUbo = PositionUniform.write(
                 (float) (ChunkSectionPos.getBlockCoord(chunkX) - cameraPos.x),
                 0f,
                 (float) (ChunkSectionPos.getBlockCoord(chunkZ) - cameraPos.z)
@@ -335,8 +337,7 @@ public class FastAsyncBlockESP extends Module {
                         largestLineIndex = icount;
                     }
 
-                    Vector4f color = new Vector4f(data.lineColor.r / 255f, data.lineColor.g / 255f, data.lineColor.b / 255f, data.lineColor.a / 255f);
-                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+                    GpuBufferSlice colorUbo = colorUbos.computeIfAbsent(data.lineColor, ColorUniform::write);
 
                     renderLines.add(new RenderPass.RenderObject<>(
                         0,
@@ -345,7 +346,10 @@ public class FastAsyncBlockESP extends Module {
                         VertexFormat.IndexType.INT,
                         0,
                         mesh.lines().indexCount(),
-                        (nothing, uniformUploader) -> uniformUploader.upload("FABEData", fabeMeshData)
+                        (nothing, uniformUploader) -> {
+                            uniformUploader.upload("FABEPosition", positionUbo);
+                            uniformUploader.upload("FABEColor", colorUbo);
+                        }
                     ));
                 }
 
@@ -355,8 +359,7 @@ public class FastAsyncBlockESP extends Module {
                         largestFaceIndex = icount;
                     }
 
-                    Vector4f color = new Vector4f(data.sideColor.r / 255f, data.sideColor.g / 255f, data.sideColor.b / 255f, data.sideColor.a / 255f);
-                    GpuBufferSlice fabeMeshData = FABEMeshUniforms.write(chunkOffset, color);
+                    GpuBufferSlice colorUbo = colorUbos.computeIfAbsent(data.sideColor, ColorUniform::write);
 
                     renderFaces.add(new RenderPass.RenderObject<>(
                         0,
@@ -365,7 +368,10 @@ public class FastAsyncBlockESP extends Module {
                         VertexFormat.IndexType.INT,
                         0,
                         mesh.faces().indexCount(),
-                        (nothing, uniformUploader) -> uniformUploader.upload("FABEData", fabeMeshData)
+                        (nothing, uniformUploader) -> {
+                            uniformUploader.upload("FABEPosition", positionUbo);
+                            uniformUploader.upload("FABEColor", colorUbo);
+                        }
                     ));
                 }
             }
@@ -427,12 +433,13 @@ public class FastAsyncBlockESP extends Module {
 
     @Override
     public String getInfoString() {
+        int chunks = meshesByChunk.size();
         int meshes = 0;
 
         for (List<FABEGpuGroupMesh> chunkMeshes : meshesByChunk.values()) {
             meshes += chunkMeshes.size();
         }
 
-        return Integer.toString(meshes);
+        return String.format("C: %s; M: %s", chunks, meshes);
     }
 }

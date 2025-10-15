@@ -21,6 +21,7 @@ import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.ChunkDataEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.mixin.WorldRendererAccessor;
+import meteordevelopment.meteorclient.mixininterface.IFrustum;
 import meteordevelopment.meteorclient.renderer.MeshUniforms;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -326,6 +327,7 @@ public class FastAsyncBlockESP extends Module {
         positionUboBuffer.flipFrame();
 
         Frustum frustum = ((WorldRendererAccessor) mc.worldRenderer).meteor$getFrustum();
+        IFrustum iFrustum = (IFrustum) frustum;
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().mul(event.matrices.peek().getPositionMatrix());
 
@@ -341,10 +343,17 @@ public class FastAsyncBlockESP extends Module {
             int chunkX = ChunkPos.getPackedX(chunkMeshes.getLongKey());
             int chunkZ = ChunkPos.getPackedZ(chunkMeshes.getLongKey());
 
+            int chunkStartX = ChunkSectionPos.getBlockCoord(chunkX);
+            int chunkStartZ = ChunkSectionPos.getBlockCoord(chunkZ);
+
+            if (frustumCulling.get() && !iFrustum.meteor$intersectsColumn(chunkStartX, chunkStartZ, chunkStartX + 16, chunkStartZ + 16)) {
+                continue;
+            }
+
             GpuBufferSlice positionUbo = positionUboBuffer.write(
-                (float) (ChunkSectionPos.getBlockCoord(chunkX) - cameraPos.x),
+                (float) (chunkStartX - cameraPos.x),
                 0f,
-                (float) (ChunkSectionPos.getBlockCoord(chunkZ) - cameraPos.z)
+                (float) (chunkStartZ - cameraPos.z)
             );
 
             for (FABEGpuGroupMesh mesh : chunkMeshes.getValue()) {

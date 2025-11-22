@@ -88,7 +88,7 @@ public class HudRenderer {
              */
 
             if (Renderer2D.COLOR.triangles.getIndicesCount() > 0) {
-                BlurShader.renderBlur(strength, Renderer2D.COLOR.triangles);
+                BlurShader.renderBlur(strength, MeteorRenderPipelines.UI_COLORED_BLUR, Renderer2D.COLOR.triangles);
             }
         }
 

@@ -96,11 +96,11 @@ public class BlurShader {
     }
 
     public static void renderBlur(int strength) {
-        renderBlur(strength, FullScreenRenderer.mesh);
+        renderBlur(strength, MeteorRenderPipelines.BLUR_UP, FullScreenRenderer.mesh);
     }
 
     //public static void renderBlur(int strength, GpuBuffer vbo, GpuBuffer ibo) {
-    public static void renderBlur(int strength, MeshBuilder mesh) {
+    public static void renderBlur(int strength, RenderPipeline outputPipeline, MeshBuilder mesh) {
         // Update strength
         IntFloatImmutablePair strengthPair = STRENGTHS[strength];
         int iterations = strengthPair.leftInt();
@@ -154,7 +154,7 @@ public class BlurShader {
         }
 
         // Final upsample
-        renderToFbo(mc.getFramebuffer().getColorAttachmentView(), FBOS[0], MeteorRenderPipelines.UI_COLORED_BLUR, UBOS[0], mesh);
+        renderToFbo(mc.getFramebuffer().getColorAttachmentView(), FBOS[0], outputPipeline, UBOS[0], mesh);
 
         // deblugging
         //TextureUtil.writeAsPNG(MeteorClient.FOLDER.toPath(), "output_fbo", FINAL_BO.texture(), 0, c -> c);

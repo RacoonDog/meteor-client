@@ -113,7 +113,7 @@ public class Blur extends Module {
         .build()
     );
 
-    private final GpuTextureView[] fbos = new GpuTextureView[6];
+    private final GpuTextureView[] fbos = new GpuTextureView[5];
     private GpuBufferSlice[] ubos;
 
     private boolean enabled;
@@ -147,7 +147,7 @@ public class Blur extends Module {
     }
 
     private GpuTextureView createFbo(int i) {
-        double scale = 1 / Math.pow(2, i);
+        double scale = 1 / Math.pow(2, i + 1);
 
         int width = (int) (mc.getWindow().getFramebufferWidth() * scale);
         int height = (int) (mc.getWindow().getFramebufferHeight() * scale);
@@ -200,25 +200,20 @@ public class Blur extends Module {
         }
 
         // Initial downsample
-        renderToFbo(fbos[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, ubos[0]);
+        renderToFbo(fbos[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, ubos[1]);
 
         // Downsample
-        for (int i = 0; i < iterations; i++) {
-            renderToFbo(fbos[i + 1], fbos[i], MeteorRenderPipelines.BLUR_DOWN, ubos[i + 1]);
+        for (int i = 0; i < iterations - 1; i++) {
+            renderToFbo(fbos[i + 1], fbos[i], MeteorRenderPipelines.BLUR_DOWN, ubos[i + 2]);
         }
 
         // Upsample
-        for (int i = iterations; i >= 1; i--) {
-            renderToFbo(fbos[i - 1], fbos[i], MeteorRenderPipelines.BLUR_UP, ubos[i - 1]);
+        for (int i = iterations - 1; i >= 1; i--) {
+            renderToFbo(fbos[i - 1], fbos[i], MeteorRenderPipelines.BLUR_UP, ubos[i]);
         }
 
-        // Render output
-        MeshRenderer.begin()
-            .attachments(mc.getFramebuffer())
-            .pipeline(MeteorRenderPipelines.BLUR_PASSTHROUGH)
-            .fullscreen()
-            .sampler("u_Texture", fbos[0])
-            .end();
+        // Final upsample
+        renderToFbo(mc.getFramebuffer().getColorAttachmentView(), fbos[0], MeteorRenderPipelines.BLUR_UP, ubos[0]);
     }
 
     private void renderToFbo(GpuTextureView targetFbo, GpuTextureView sourceTexture, RenderPipeline pipeline, GpuBufferSlice ubo) {
@@ -256,9 +251,14 @@ public class Blur extends Module {
         UNIFORM_STORAGE.clear();
 
         BlurUniformData[] uboData = new BlurUniformData[6];
-        for (int i = 0; i < uboData.length; i++) {
+        uboData[0] = new BlurUniformData(
+            0.5f / mc.getFramebuffer().textureWidth, 0.5f / mc.getFramebuffer().textureHeight,
+            offset
+        );
+
+        for (int i = 0; i < fbos.length; i++) {
             GpuTextureView fbo = fbos[i];
-            uboData[i] = new BlurUniformData(
+            uboData[i + 1] = new BlurUniformData(
                 0.5f / fbo.getWidth(0), 0.5f / fbo.getHeight(0),
                 offset
             );

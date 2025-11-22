@@ -119,6 +119,7 @@ public class Blur extends Module {
     private boolean enabled;
     private long fadeEndAt;
     private float previousOffset = -1;
+    private boolean initialized = false;
 
     public Blur() {
         super(Categories.Render, "blur", "Blurs background when in GUI screens.");
@@ -130,20 +131,26 @@ public class Blur extends Module {
 
         // The listeners need to run even when the module is not enabled
         MeteorClient.EVENT_BUS.subscribe(new ConsumerListener<>(ResolutionChangedEvent.class, event -> {
-            // Resize all fbos
-            for (int i = 0; i < fbos.length; i++) {
-                if (fbos[i] != null) {
-                    fbos[i].close();
-                }
-
-                fbos[i] = createFbo(i);
-            }
+            // Invalidate fbos
+            this.onDeactivate();
 
             // Invalidate ubos
             previousOffset = -1;
         }));
 
         MeteorClient.EVENT_BUS.subscribe(new ConsumerListener<>(RenderAfterWorldEvent.class, event -> onRenderAfterWorld()));
+    }
+
+    @Override
+    public void onDeactivate() {
+        for (int i = 0; i < fbos.length; i++) {
+            GpuTextureView fbo = fbos[i];
+            if (fbo != null) {
+                fbo.close();
+                fbos[i] = null;
+            }
+        }
+        initialized = false;
     }
 
     private GpuTextureView createFbo(int i) {
@@ -192,6 +199,14 @@ public class Blur extends Module {
         IntFloatImmutablePair strength = strengths[(int) ((this.strength.get() - 1) * progress)];
         int iterations = strength.leftInt();
         float offset = strength.rightFloat();
+
+        // Update framebuffers
+        if (!initialized) {
+            for (int i = 0; i < fbos.length; i++) {
+                fbos[i] = createFbo(i);
+            }
+            initialized = true;
+        }
 
         // Update uniforms
         if (previousOffset != offset) {

@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.events.meteor.CustomFontChangedEvent;
 import meteordevelopment.meteorclient.events.render.Render2DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
+import meteordevelopment.meteorclient.renderer.BlurShader;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
@@ -72,6 +73,27 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
         .name("text-colors")
         .description("Colors used for the Text element.")
         .defaultValue(List.of(new SettingColor(), new SettingColor(175, 175, 175), new SettingColor(25, 225, 25), new SettingColor(225, 25, 25)))
+        .build()
+    );
+
+    public final Setting<Boolean> blur = sgGeneral.add(new BoolSetting.Builder()
+        .name("blur")
+        .description("Blurs the world behind Hud element.")
+        .defaultValue(false)
+        .onChanged(b -> {
+                if (b) BlurShader.register(this);
+                else BlurShader.unregister(this);
+        })
+        .build()
+    );
+
+    public final Setting<Integer> blurStrength = sgGeneral.add(new IntSetting.Builder()
+        .name("blur-strength")
+        .description("how strongly to blurry")
+        .range(1, BlurShader.getStrengthCount())
+        .sliderRange(1, BlurShader.getStrengthCount())
+        .defaultValue(3)
+        .visible(blur::get)
         .build()
     );
 

@@ -7,14 +7,17 @@ package meteordevelopment.meteorclient.renderer;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.math.Vec3d;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static org.lwjgl.system.MemoryUtil.*;
@@ -219,14 +222,24 @@ public class MeshBuilder {
         return building;
     }
 
-    public GpuBuffer getVertexBuffer() {
+    public GpuBuffer getImmediateVertexBuffer() {
         vertices.limit(getVerticesOffset());
         return format.uploadImmediateVertexBuffer(vertices);
     }
 
-    public GpuBuffer getIndexBuffer() {
+    public GpuBuffer getImmediateIndexBuffer() {
         indices.limit(indicesCount * Integer.BYTES);
         return format.uploadImmediateIndexBuffer(indices);
+    }
+
+    public GpuBuffer getVertexBuffer(@Nullable Supplier<String> labelGetter) {
+        vertices.limit(getVerticesOffset());
+        return RenderSystem.getDevice().createBuffer(labelGetter, GpuBuffer.USAGE_VERTEX, vertices);
+    }
+
+    public GpuBuffer getIndexBuffer(@Nullable Supplier<String> labelGetter) {
+        indices.limit(indicesCount * Integer.BYTES);
+        return RenderSystem.getDevice().createBuffer(labelGetter, GpuBuffer.USAGE_INDEX, indices);
     }
 
     public int getIndicesCount() {

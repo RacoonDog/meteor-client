@@ -5,10 +5,12 @@
 
 package meteordevelopment.meteorclient.renderer;
 
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.AddressMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
@@ -31,6 +33,8 @@ public class BlurShader {
     private static final ReferenceSet<Object> BLUREES = new ReferenceArraySet<>();
     private static final GpuTextureView[] FBOS = new GpuTextureView[5];
     private static final GpuBufferSlice[] UBOS = new GpuBufferSlice[6];
+
+    private static GpuTextureView FINAL_BO;
 
     // Strength-Levels from https://github.com/jonaburg/picom/blob/a8445684fe18946604848efb73ace9457b29bf80/src/backend/backend_common.c#L372
     // and CROSBYYY !! :tada: 😊
@@ -92,6 +96,10 @@ public class BlurShader {
     }
 
     public static void renderBlur(int strength) {
+        renderBlur(strength, FullScreenRenderer.vbo, FullScreenRenderer.vbo);
+    }
+
+    public static void renderBlur(int strength, GpuBuffer vbo, GpuBuffer ibo) {
         // Update strength
         IntFloatImmutablePair strengthPair = STRENGTHS[strength];
         int iterations = strengthPair.leftInt();
@@ -102,6 +110,8 @@ public class BlurShader {
             for (int i = 0; i < FBOS.length; i++) {
                 FBOS[i] = createFbo(i);
             }
+
+            FINAL_BO = RenderSystem.getDevice().createTextureView(RenderSystem.getDevice().createTexture("Blur - Output", 15,  TextureFormat.RGBA8, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight(), 1, 1));
             initialized = true;
         }
 
@@ -130,23 +140,28 @@ public class BlurShader {
         }
 
         // Initial downsample
-        renderToFbo(FBOS[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, UBOS[1]);
+        renderToFbo(FBOS[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, UBOS[1], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
 
         // Downsample
         for (int i = 0; i < iterations - 1; i++) {
-            renderToFbo(FBOS[i + 1], FBOS[i], MeteorRenderPipelines.BLUR_DOWN, UBOS[i + 2]);
+            renderToFbo(FBOS[i + 1], FBOS[i], MeteorRenderPipelines.BLUR_DOWN, UBOS[i + 2], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
         }
 
         // Upsample
         for (int i = iterations - 1; i >= 1; i--) {
-            renderToFbo(FBOS[i - 1], FBOS[i], MeteorRenderPipelines.BLUR_UP, UBOS[i]);
+            renderToFbo(FBOS[i - 1], FBOS[i], MeteorRenderPipelines.BLUR_UP, UBOS[i], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
         }
 
         // Final upsample
-        renderToFbo(mc.getFramebuffer().getColorAttachmentView(), FBOS[0], MeteorRenderPipelines.BLUR_UP, UBOS[0]);
+        renderToFbo(FINAL_BO, FBOS[0], MeteorRenderPipelines.BLUR_UP, UBOS[0], vbo, ibo);
+
+        // deblugging
+        TextureUtil.writeAsPNG(MeteorClient.FOLDER.toPath(), "output_fbo", FINAL_BO.texture(), 0, c -> c);
+
+        RenderSystem.getDevice().createCommandEncoder().presentTexture(FINAL_BO);
     }
 
-    private static void renderToFbo(GpuTextureView targetFbo, GpuTextureView sourceTexture, RenderPipeline pipeline, GpuBufferSlice ubo) {
+    private static void renderToFbo(GpuTextureView targetFbo, GpuTextureView sourceTexture, RenderPipeline pipeline, GpuBufferSlice ubo, GpuBuffer vbo, GpuBuffer ibo) {
         AddressMode prevAddressModeU = ((IGpuTexture) sourceTexture.texture()).meteor$getAddressModeU();
         AddressMode prevAddressModeV = ((IGpuTexture) sourceTexture.texture()).meteor$getAddressModeV();
 
@@ -155,7 +170,7 @@ public class BlurShader {
         MeshRenderer.begin()
             .attachments(targetFbo, null)
             .pipeline(pipeline)
-            .fullscreen()
+            .mesh(vbo, ibo)
             .uniform("BlurData", ubo)
             .sampler("u_Texture", sourceTexture)
             .end();
@@ -181,6 +196,12 @@ public class BlurShader {
                 FBOS[i] = null;
             }
         }
+
+        if (FINAL_BO != null) {
+            FINAL_BO.close();
+            FINAL_BO = null;
+        }
+
         initialized = false;
 
         // Invalidate ubos

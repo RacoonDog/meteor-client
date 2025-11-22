@@ -37,7 +37,7 @@ public class FullScreenRenderer {
 
         mesh.end();
 
-        vbo = mesh.getVertexBuffer();
-        ibo = mesh.getIndexBuffer();
+        vbo = mesh.getVertexBuffer(() -> "Fullscreen vertex buffer");
+        ibo = mesh.getIndexBuffer(() -> "Fullscreen index buffer");
     }
 }

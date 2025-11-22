@@ -146,8 +146,8 @@ public class MeshRenderer {
                 applyCameraPos();
             }
 
-            GpuBuffer vertexBuffer = mesh != null ? mesh.getVertexBuffer() : this.vertexBuffer;
-            GpuBuffer indexBuffer = mesh != null ? mesh.getIndexBuffer() : this.indexBuffer;
+            GpuBuffer vertexBuffer = mesh != null ? mesh.getImmediateVertexBuffer() : this.vertexBuffer;
+            GpuBuffer indexBuffer = mesh != null ? mesh.getImmediateIndexBuffer() : this.indexBuffer;
 
             {
                 OptionalInt clearColor = this.clearColor != null ?

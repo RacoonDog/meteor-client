@@ -10,6 +10,7 @@ import meteordevelopment.meteorclient.gui.renderer.packer.TextureRegion;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.MinecraftClient;
+import org.jetbrains.annotations.Nullable;
 
 public class Renderer2D {
     public static Renderer2D COLOR;
@@ -19,6 +20,7 @@ public class Renderer2D {
 
     public final MeshBuilder triangles;
     public final MeshBuilder lines;
+    private @Nullable UploadedMesh gpuTriangles;
 
     public Renderer2D(boolean textured) {
         this.textured = textured;
@@ -60,7 +62,15 @@ public class Renderer2D {
 
     public void render(String samplerName, GpuTextureView samplerView) {
         if (lines.isBuilding()) lines.end();
-        if (triangles.isBuilding()) triangles.end();
+        UploadedMesh triangles = uploadTriangles();
+
+        MeshRenderer.begin()
+            .attachments(MinecraftClient.getInstance().getFramebuffer())
+            .pipeline(textured ? MeteorRenderPipelines.UI_TEXTURED : MeteorRenderPipelines.UI_COLORED)
+            //.mesh(triangles.vbo(), triangles.ibo())
+            .mesh(this.triangles)
+            .sampler(samplerName, samplerView)
+            .end();
 
         MeshRenderer.begin()
             .attachments(MinecraftClient.getInstance().getFramebuffer())
@@ -68,12 +78,18 @@ public class Renderer2D {
             .mesh(lines)
             .end();
 
-        MeshRenderer.begin()
-            .attachments(MinecraftClient.getInstance().getFramebuffer())
-            .pipeline(textured ? MeteorRenderPipelines.UI_TEXTURED : MeteorRenderPipelines.UI_COLORED)
-            .mesh(triangles)
-            .sampler(samplerName, samplerView)
-            .end();
+        gpuTriangles = null;
+    }
+
+    public UploadedMesh uploadTriangles() {
+        if (gpuTriangles != null) {
+            return gpuTriangles;
+        } else {
+            if (triangles.isBuilding()) triangles.end();
+            return gpuTriangles = triangles.getIndicesCount() > 0
+                ? new UploadedMesh(triangles.getImmediateVertexBuffer(), triangles.getImmediateIndexBuffer())
+                : UploadedMesh.EMPTY;
+        }
     }
 
     // Tris

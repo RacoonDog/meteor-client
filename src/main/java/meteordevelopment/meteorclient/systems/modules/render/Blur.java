@@ -41,11 +41,17 @@ public class Blur extends Module {
     private final SettingGroup sgScreens = settings.createGroup("Screens");
 
     // Strength-Levels from https://github.com/jonaburg/picom/blob/a8445684fe18946604848efb73ace9457b29bf80/src/backend/backend_common.c#L372
+    // and CROSBYYY !! :tada: 😊
     private final IntFloatImmutablePair[] strengths = new IntFloatImmutablePair[]{
+        IntFloatImmutablePair.of(1, 0.50f),
         IntFloatImmutablePair.of(1, 1.25f), // LVL 1
         IntFloatImmutablePair.of(1, 2.25f), // LVL 2
+        IntFloatImmutablePair.of(2, 1.0f),
+        IntFloatImmutablePair.of(2, 1.5f),
         IntFloatImmutablePair.of(2, 2.0f),  // LVL 3
+        IntFloatImmutablePair.of(2, 2.5f),
         IntFloatImmutablePair.of(2, 3.0f),  // LVL 4
+        IntFloatImmutablePair.of(2, 3.5f),
         IntFloatImmutablePair.of(2, 4.25f), // LVL 5
         IntFloatImmutablePair.of(3, 2.5f),  // LVL 6
         IntFloatImmutablePair.of(3, 3.25f), // LVL 7
@@ -69,9 +75,8 @@ public class Blur extends Module {
         .name("strength")
         .description("How strong the blur should be.")
         .defaultValue(5)
-        .min(1)
-        .max(20)
-        .sliderRange(1, 20)
+        .range(1, strengths.length)
+        .sliderRange(1, strengths.length)
         .build()
     );
 

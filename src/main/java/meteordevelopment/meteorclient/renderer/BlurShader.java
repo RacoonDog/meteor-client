@@ -96,10 +96,11 @@ public class BlurShader {
     }
 
     public static void renderBlur(int strength) {
-        renderBlur(strength, FullScreenRenderer.vbo, FullScreenRenderer.vbo);
+        renderBlur(strength, FullScreenRenderer.mesh);
     }
 
-    public static void renderBlur(int strength, GpuBuffer vbo, GpuBuffer ibo) {
+    //public static void renderBlur(int strength, GpuBuffer vbo, GpuBuffer ibo) {
+    public static void renderBlur(int strength, MeshBuilder mesh) {
         // Update strength
         IntFloatImmutablePair strengthPair = STRENGTHS[strength];
         int iterations = strengthPair.leftInt();
@@ -140,25 +141,25 @@ public class BlurShader {
         }
 
         // Initial downsample
-        renderToFbo(FBOS[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, UBOS[1], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
+        renderToFbo(FBOS[0], mc.getFramebuffer().getColorAttachmentView(), MeteorRenderPipelines.BLUR_DOWN, UBOS[1], FullScreenRenderer.vbo, FullScreenRenderer.ibo);
 
         // Downsample
         for (int i = 0; i < iterations - 1; i++) {
-            renderToFbo(FBOS[i + 1], FBOS[i], MeteorRenderPipelines.BLUR_DOWN, UBOS[i + 2], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
+            renderToFbo(FBOS[i + 1], FBOS[i], MeteorRenderPipelines.BLUR_DOWN, UBOS[i + 2], FullScreenRenderer.vbo, FullScreenRenderer.ibo);
         }
 
         // Upsample
         for (int i = iterations - 1; i >= 1; i--) {
-            renderToFbo(FBOS[i - 1], FBOS[i], MeteorRenderPipelines.BLUR_UP, UBOS[i], FullScreenRenderer.vbo, FullScreenRenderer.vbo);
+            renderToFbo(FBOS[i - 1], FBOS[i], MeteorRenderPipelines.BLUR_UP, UBOS[i], FullScreenRenderer.vbo, FullScreenRenderer.ibo);
         }
 
         // Final upsample
-        renderToFbo(FINAL_BO, FBOS[0], MeteorRenderPipelines.BLUR_UP, UBOS[0], vbo, ibo);
+        renderToFbo(mc.getFramebuffer().getColorAttachmentView(), FBOS[0], MeteorRenderPipelines.UI_COLORED_BLUR, UBOS[0], mesh);
 
         // deblugging
-        TextureUtil.writeAsPNG(MeteorClient.FOLDER.toPath(), "output_fbo", FINAL_BO.texture(), 0, c -> c);
+        //TextureUtil.writeAsPNG(MeteorClient.FOLDER.toPath(), "output_fbo", FINAL_BO.texture(), 0, c -> c);
 
-        RenderSystem.getDevice().createCommandEncoder().presentTexture(FINAL_BO);
+        //RenderSystem.getDevice().createCommandEncoder().presentTexture(FINAL_BO);
     }
 
     private static void renderToFbo(GpuTextureView targetFbo, GpuTextureView sourceTexture, RenderPipeline pipeline, GpuBufferSlice ubo, GpuBuffer vbo, GpuBuffer ibo) {
@@ -171,6 +172,23 @@ public class BlurShader {
             .attachments(targetFbo, null)
             .pipeline(pipeline)
             .mesh(vbo, ibo)
+            .uniform("BlurData", ubo)
+            .sampler("u_Texture", sourceTexture)
+            .end();
+
+        sourceTexture.texture().setAddressMode(prevAddressModeU, prevAddressModeV);
+    }
+
+    private static void renderToFbo(GpuTextureView targetFbo, GpuTextureView sourceTexture, RenderPipeline pipeline, GpuBufferSlice ubo, MeshBuilder mesh) {
+        AddressMode prevAddressModeU = ((IGpuTexture) sourceTexture.texture()).meteor$getAddressModeU();
+        AddressMode prevAddressModeV = ((IGpuTexture) sourceTexture.texture()).meteor$getAddressModeV();
+
+        sourceTexture.texture().setAddressMode(AddressMode.CLAMP_TO_EDGE);
+
+        MeshRenderer.begin()
+            .attachments(targetFbo, null)
+            .pipeline(pipeline)
+            .mesh(mesh)
             .uniform("BlurData", ubo)
             .sampler("u_Texture", sourceTexture)
             .end();

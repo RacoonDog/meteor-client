@@ -79,10 +79,16 @@ public class HudRenderer {
     public void end() {
         if (hud.blur.get()) {
             int strength = hud.blurStrength.get() - 1;
+            /*
             UploadedMesh mesh = Renderer2D.COLOR.uploadTriangles();
 
             if (mesh.ibo() != null && mesh.ibo().size() > 0) {
                 BlurShader.renderBlur(strength, mesh.vbo(), mesh.ibo());
+            }
+             */
+
+            if (Renderer2D.COLOR.triangles.getIndicesCount() > 0) {
+                BlurShader.renderBlur(strength, Renderer2D.COLOR.triangles);
             }
         }
 

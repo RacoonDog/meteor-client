@@ -12,16 +12,17 @@ import net.minecraft.client.util.BufferAllocator;
 
 public class CustomOutlineVertexConsumerProvider implements VertexConsumerProvider {
     private final VertexConsumerProvider.Immediate immediate = VertexConsumerProvider.immediate(new BufferAllocator(1536));
+    private boolean isEmpty = true;
 
     @Override
     public VertexConsumer getBuffer(RenderLayer layer) {
         if (layer.isOutline()) {
-            return new CustomVertexConsumer(this.immediate.getBuffer(layer));
+            return new CustomVertexConsumer(this, this.immediate.getBuffer(layer));
         }
 
         var optional = layer.getAffectedOutline();
         if (optional.isPresent()) {
-            return new CustomVertexConsumer(this.immediate.getBuffer(optional.get()));
+            return new CustomVertexConsumer(this, this.immediate.getBuffer(optional.get()));
         }
 
         return NoopVertexConsumer.INSTANCE;
@@ -29,11 +30,22 @@ public class CustomOutlineVertexConsumerProvider implements VertexConsumerProvid
 
     public void draw() {
         immediate.draw();
+        this.isEmpty = true;
     }
 
-    private record CustomVertexConsumer(VertexConsumer consumer) implements VertexConsumer {
+    public boolean isEmpty() {
+        return this.isEmpty;
+    }
+
+    protected void setDrawn() {
+        this.isEmpty = false;
+    }
+
+
+    private record CustomVertexConsumer(CustomOutlineVertexConsumerProvider provider, VertexConsumer consumer) implements VertexConsumer {
         @Override
         public VertexConsumer vertex(float x, float y, float z) {
+            provider.setDrawn();
             consumer.vertex(x, y, z);
             return this;
         }

@@ -9,6 +9,7 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public abstract class EntityShader extends PostProcessShader {
     public final CustomOutlineVertexConsumerProvider vertexConsumerProvider;
+    protected boolean isMaskEmpty = false;
 
     protected EntityShader(RenderPipeline pipeline) {
         super(pipeline);
@@ -28,6 +29,14 @@ public abstract class EntityShader extends PostProcessShader {
     }
 
     public void submitVertices() {
+        isMaskEmpty = vertexConsumerProvider.isEmpty();
         submitVertices(vertexConsumerProvider::draw);
+    }
+
+    @Override
+    public void render() {
+        if (!isMaskEmpty) {
+            super.render();
+        }
     }
 }

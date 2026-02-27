@@ -23,5 +23,4 @@ void main() {
         texture(u_Texture, uv + vec2(0, -u_HalfTexelSize.y * 2) * u_Offset) +
         texture(u_Texture, uv - u_HalfTexelSize * u_Offset) * 2
     ) / 12;
-    color.a = 1;
 }

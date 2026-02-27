@@ -153,6 +153,22 @@ public abstract class MeteorRenderPipelines {
         .build()
     );
 
+    public static final RenderPipeline POST_OUTLINE_NEW = add(new ExtendedRenderPipelineBuilder()
+        .withLocation(MeteorClient.identifier("pipeline/post/outline_new"))
+        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/passthrough.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/post-process/outline_new.frag"))
+        .withSampler("u_MaskTexture")
+        .withSampler("u_BlurTexture")
+        .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+        .withUniform("OutlineData", UniformType.UNIFORM_BUFFER)
+        .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withBlend(BlendFunction.TRANSLUCENT)
+        .withCull(false)
+        .build()
+    );
+
     public static final RenderPipeline POST_IMAGE = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/post/image"))
         .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
@@ -195,6 +211,34 @@ public abstract class MeteorRenderPipelines {
         .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
         .withDepthWrite(false)
         .withBlend(BlendFunction.TRANSLUCENT)
+        .withCull(false)
+        .build()
+    );
+
+    public static final RenderPipeline BLUR_ALPHA_DOWN = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/blur/down"))
+        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/blur_down.frag"))
+        .withSampler("u_Texture")
+        .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+        .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withoutBlend()
+        .withCull(false)
+        .build()
+    );
+
+    public static final RenderPipeline BLUR_ALPHA_UP = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/blur/up"))
+        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/blur_up.frag"))
+        .withSampler("u_Texture")
+        .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+        .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withoutBlend()
         .withCull(false)
         .build()
     );

@@ -216,7 +216,7 @@ public class Blur extends Module {
             .attachments(mc.getFramebuffer())
             .pipeline(MeteorRenderPipelines.BLUR_PASSTHROUGH)
             .fullscreen()
-            .sampler("u_Texture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR)) // todo ???
+            .sampler("u_Texture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
             .end();
     }
 

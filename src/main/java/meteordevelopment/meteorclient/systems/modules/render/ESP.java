@@ -63,9 +63,10 @@ public class ESP extends Module {
         .name("outline-width")
         .description("The width of the shader outline.")
         .visible(() -> mode.get() == Mode.Shader)
-        .defaultValue(2)
-        .range(1, 10)
-        .sliderRange(1, 5)
+        .defaultValue(5)
+        //.range(1, 20)
+        .min(1)
+        .sliderRange(1, 10)
         .build()
     );
 
@@ -74,7 +75,7 @@ public class ESP extends Module {
         .description("Multiplier for glow effect")
         .visible(() -> mode.get() == Mode.Shader)
         .decimalPlaces(3)
-        .defaultValue(3.5)
+        .defaultValue(1.5)
         .min(0)
         .sliderMax(10)
         .build()

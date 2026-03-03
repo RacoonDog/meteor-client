@@ -31,7 +31,7 @@ public class EntityOutlineShader extends EntityShader {
     private GpuBufferSlice[] ubos;
 
     public EntityOutlineShader() {
-        super(MeteorRenderPipelines.POST_OUTLINE);
+        super(MeteorRenderPipelines.POST_OUTLINE_NEW);
     }
 
     @Override
@@ -124,7 +124,7 @@ public class EntityOutlineShader extends EntityShader {
         for (int i = passes - 1; i >= 1; i--) {
             MeshRenderer.begin()
                 .attachments(fbos[i - 1], null)
-                .pipeline(MeteorRenderPipelines.BLUR_ALPHA_UP)
+                .pipeline(MeteorRenderPipelines.BLUR_UP)
                 .fullscreen()
                 .uniform("BlurData", ubos[i - 1])
                 .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))

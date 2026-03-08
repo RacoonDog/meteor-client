@@ -44,6 +44,22 @@ public class ESP extends Module {
         .build()
     );
 
+    public final Setting<ShaderMode> shaderMode = sgGeneral.add(new EnumSetting.Builder<ShaderMode>()
+        .name("shader-mode")
+        .description("What kind of shader to use.")
+        .defaultValue(ShaderMode.Glow)
+        .visible(() -> mode.get() == Mode.Shader)
+        .build()
+    );
+
+    public final Setting<BlendMode> colorBlendMode = sgGeneral.add(new EnumSetting.Builder<BlendMode>()
+        .name("color-blend-mode")
+        .description("How to blend colors.")
+        .defaultValue(BlendMode.Lighten)
+        .visible(() -> mode.get() == Mode.Shader && shaderMode.get() == ShaderMode.Glow_Texture)
+        .build()
+    );
+
     public final Setting<Boolean> highlightTarget = sgGeneral.add(new BoolSetting.Builder()
         .name("highlight-target")
         .description("highlights the currently targeted entity differently")
@@ -454,5 +470,21 @@ public class ESP extends Module {
         public String toString() {
             return this == _2D ? "2D" : super.toString();
         }
+    }
+
+    public enum ShaderMode {
+        Glow,
+        Glow_Texture;
+
+
+        @Override
+        public String toString() {
+            return this == Glow_Texture ? "Glow with Texture" : super.toString();
+        }
+    }
+
+    public enum BlendMode {
+        Darken,
+        Lighten
     }
 }

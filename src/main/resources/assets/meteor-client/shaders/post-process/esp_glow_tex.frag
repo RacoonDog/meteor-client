@@ -4,12 +4,14 @@ in vec2 uv;
 
 uniform sampler2D u_MaskTexture;
 uniform sampler2D u_BlurTexture;
+uniform sampler2D u_OverlayTexture;
 
 layout (std140) uniform OutlineData {
     int width;
     float fillOpacity;
     int shapeMode;
     float glowMultiplier;
+    int blendMode;
 } u_Outline;
 
 layout (std140) uniform BlurData {
@@ -19,13 +21,22 @@ layout (std140) uniform BlurData {
 
 out vec4 color;
 
+vec3 color_blend(vec3 first, vec3 second) {
+    if (u_Outline.blendMode == 0) {
+        return first * second;
+    } else {
+        return vec3(1.0) - (vec3(1.0) - first) * (vec3(1.0) - second);
+    }
+}
+
 void main() {
     vec4 mask = texture(u_MaskTexture, uv);
 
     if (mask.a != 0.0) {
         if (u_Outline.shapeMode == 0) discard;
 
-        color = vec4(mask.rgb, mask.a * u_Outline.fillOpacity);
+        vec4 overlay = texture(u_OverlayTexture, uv);
+        color = vec4(color_blend(vec3(overlay), mask.rgb), overlay.a * u_Outline.fillOpacity);
     } else {
         if (u_Outline.shapeMode == 1) discard;
 
@@ -40,6 +51,9 @@ void main() {
             texture(u_BlurTexture, uv - u_HalfTexelSize * u_Offset) * 2
         ) / 12;
 
-        color = vec4(blur.rgb / blur.a, min(blur.a * u_Outline.glowMultiplier, 1.0));
+        if (blur.a == 0.0) discard;
+
+        vec4 overlay = texture(u_OverlayTexture, uv);
+        color = vec4(color_blend(vec3(overlay), blur.rgb / blur.a), min(overlay.a * blur.a * u_Outline.glowMultiplier, 1.0));
     }
 }

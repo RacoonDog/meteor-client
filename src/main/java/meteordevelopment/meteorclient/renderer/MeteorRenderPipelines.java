@@ -153,11 +153,9 @@ public abstract class MeteorRenderPipelines {
         .build()
     );
 
-    public static final RenderPipeline POST_OUTLINE_NEW = add(new ExtendedRenderPipelineBuilder()
-        .withLocation(MeteorClient.identifier("pipeline/post/outline_new"))
+    private static final RenderPipeline.Snippet POST_OUTLINE_GLOW_SNIPPER = new ExtendedRenderPipelineBuilder()
         .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
         .withVertexShader(MeteorClient.identifier("shaders/passthrough.vert"))
-        .withFragmentShader(MeteorClient.identifier("shaders/post-process/outline_new.frag"))
         .withSampler("u_MaskTexture")
         .withSampler("u_BlurTexture")
         .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
@@ -166,6 +164,18 @@ public abstract class MeteorRenderPipelines {
         .withDepthWrite(false)
         .withBlend(BlendFunction.TRANSLUCENT)
         .withCull(false)
+        .buildSnippet();
+
+    public static final RenderPipeline POST_OUTLINE_GLOW = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPER)
+        .withLocation(MeteorClient.identifier("pipeline/post/outline_glow"))
+        .withFragmentShader(MeteorClient.identifier("shaders/post-process/esp_glow.frag"))
+        .build()
+    );
+
+    public static final RenderPipeline POST_OUTLINE_GLOW_TEX = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPER)
+        .withLocation(MeteorClient.identifier("pipeline/post/outline_glow_tex"))
+        .withFragmentShader(MeteorClient.identifier("shaders/post-process/esp_glow_tex.frag"))
+        .withSampler("u_OverlayTexture")
         .build()
     );
 

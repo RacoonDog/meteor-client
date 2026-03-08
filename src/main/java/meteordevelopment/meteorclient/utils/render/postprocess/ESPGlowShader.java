@@ -3,24 +3,41 @@ package meteordevelopment.meteorclient.utils.render.postprocess;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
+import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
+import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.renderer.FixedUniformStorage;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
+import meteordevelopment.meteorclient.renderer.Texture;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.utils.PostInit;
+import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.DynamicUniformStorage;
 import net.minecraft.client.util.Window;
 import net.minecraft.entity.Entity;
+import net.minecraft.resource.Resource;
 import net.minecraft.util.math.MathHelper;
+import org.lwjgl.stb.STBImage;
+import org.lwjgl.system.MemoryStack;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.util.Optional;
 
-public class EntityOutlineShader extends EntityShader {
+import static meteordevelopment.meteorclient.MeteorClient.mc;
+
+public class ESPGlowShader extends EntityShader {
+    private static final String[] FILE_FORMATS = { "png", "jpg" };
+
+    private static Texture IMAGE_TEX;
     private static ESP esp;
     private int previousWidth = -1;
     public int passes = -1;
@@ -30,8 +47,51 @@ public class EntityOutlineShader extends EntityShader {
     private final GpuTextureView[] fbos = new GpuTextureView[4];
     private GpuBufferSlice[] ubos;
 
-    public EntityOutlineShader() {
-        super(MeteorRenderPipelines.POST_OUTLINE_NEW);
+    public ESPGlowShader() {
+        super(MeteorRenderPipelines.POST_OUTLINE_GLOW);
+        MeteorClient.EVENT_BUS.subscribe(ESPGlowShader.class);
+    }
+
+    @PostInit
+    public static void load() {
+        try {
+            ByteBuffer data = null;
+            for (String fileFormat : FILE_FORMATS) {
+                Optional<Resource> optional = mc.getResourceManager().getResource(MeteorClient.identifier("textures/chams." + fileFormat));
+                if (optional.isEmpty() || optional.get().getInputStream() == null) {
+                    continue;
+                }
+
+                data = TextureUtil.readResource(optional.get().getInputStream());
+                break;
+            }
+            if (data == null) return;
+
+            data.rewind();
+
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                IntBuffer width = stack.mallocInt(1);
+                IntBuffer height = stack.mallocInt(1);
+                IntBuffer comp = stack.mallocInt(1);
+
+                STBImage.stbi_set_flip_vertically_on_load(true);
+                ByteBuffer image = STBImage.stbi_load_from_memory(data, width, height, comp, 4);
+
+                IMAGE_TEX = new Texture(width.get(0), height.get(0), TextureFormat.RGBA8, FilterMode.NEAREST, FilterMode.NEAREST);
+                IMAGE_TEX.upload(image);
+
+                STBImage.stbi_image_free(image);
+                STBImage.stbi_set_flip_vertically_on_load(false);
+            }
+        }
+        catch (IOException e) {
+            MeteorClient.LOG.error("Error loading the esp glow texture shader", e);
+        }
+    }
+
+    @EventHandler
+    private static void onResourcePacksReloaded(ResourcePacksReloadedEvent event) {
+        load();
     }
 
     @Override
@@ -131,10 +191,12 @@ public class EntityOutlineShader extends EntityShader {
                 .end();
         }
 
+        ESP.ShaderMode shaderMode = esp.shaderMode.get();
+
         // Combination pass
-        MeshRenderer.begin()
+        MeshRenderer renderer = MeshRenderer.begin()
             .attachments(MinecraftClient.getInstance().getFramebuffer())
-            .pipeline(MeteorRenderPipelines.POST_OUTLINE_NEW)
+            .pipeline(shaderMode == ESP.ShaderMode.Glow ? MeteorRenderPipelines.POST_OUTLINE_GLOW : MeteorRenderPipelines.POST_OUTLINE_GLOW_TEX)
             .fullscreen()
             .sampler("u_MaskTexture", framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.NEAREST))
             .sampler("u_BlurTexture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
@@ -143,8 +205,14 @@ public class EntityOutlineShader extends EntityShader {
                 esp.outlineWidth.get(),
                 esp.fillOpacity.get().floatValue(),
                 esp.shapeMode.get().ordinal(),
-                esp.glowMultiplier.get().floatValue()))
-            .end();
+                esp.glowMultiplier.get().floatValue(),
+                esp.colorBlendMode.get().ordinal()));
+
+        if (shaderMode == ESP.ShaderMode.Glow_Texture) {
+            renderer.sampler("u_OverlayTexture", IMAGE_TEX.getGlTextureView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+        }
+
+        renderer.end();
     }
 
     // Uniforms

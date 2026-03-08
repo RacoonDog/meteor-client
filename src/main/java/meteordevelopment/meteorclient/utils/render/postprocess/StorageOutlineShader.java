@@ -24,7 +24,8 @@ public class StorageOutlineShader extends PostProcessShader {
             storageESP.outlineWidth.get(),
             storageESP.fillOpacity.get() / 255.0f,
             storageESP.shapeMode.get().ordinal(),
-            storageESP.glowMultiplier.get().floatValue()
+            storageESP.glowMultiplier.get().floatValue(),
+            0
         ));
     }
 }

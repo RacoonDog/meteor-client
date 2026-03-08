@@ -9,7 +9,7 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class PostProcessShaders {
     public static EntityShader CHAMS;
-    public static EntityShader ENTITY_OUTLINE;
+    public static EntityShader ESP_GLOW;
     public static PostProcessShader STORAGE_OUTLINE;
 
     private PostProcessShaders() {}
@@ -17,7 +17,7 @@ public class PostProcessShaders {
     @PreInit
     public static void init() {
         CHAMS = new ChamsShader();
-        ENTITY_OUTLINE = new EntityOutlineShader();
+        ESP_GLOW = new ESPGlowShader();
         STORAGE_OUTLINE = new StorageOutlineShader();
 
         MeteorClient.EVENT_BUS.subscribe(PostProcessShaders.class);
@@ -25,26 +25,26 @@ public class PostProcessShaders {
 
     public static void beginRender() {
         CHAMS.clearTexture();
-        ENTITY_OUTLINE.clearTexture();
+        ESP_GLOW.clearTexture();
         STORAGE_OUTLINE.clearTexture();
     }
 
     public static void submitEntityVertices() {
         CHAMS.submitVertices();
-        ENTITY_OUTLINE.submitVertices();
+        ESP_GLOW.submitVertices();
     }
 
     @EventHandler
     private static void onRender(Render2DEvent event) {
         CHAMS.render();
-        ENTITY_OUTLINE.render();
+        ESP_GLOW.render();
     }
 
     public static void onResized(int width, int height) {
         if (mc == null) return;
 
         CHAMS.onResized(width, height);
-        ENTITY_OUTLINE.onResized(width, height);
+        ESP_GLOW.onResized(width, height);
         STORAGE_OUTLINE.onResized(width, height);
     }
 }

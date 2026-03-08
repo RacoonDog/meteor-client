@@ -142,7 +142,7 @@ public abstract class WorldRendererMixin implements IWorldRenderer {
         }
 
         draw(worldState, matrices, PostProcessShaders.CHAMS, entity -> Color.WHITE);
-        draw(worldState, matrices, PostProcessShaders.ENTITY_OUTLINE, entity -> esp.getColor(entity));
+        draw(worldState, matrices, PostProcessShaders.ESP_GLOW, entity -> esp.getColor(entity));
     }
 
     @Unique

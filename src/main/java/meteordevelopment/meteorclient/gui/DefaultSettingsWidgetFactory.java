@@ -73,6 +73,7 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         factories.put(FontFaceSetting.class, (table, setting) -> fontW(table, (FontFaceSetting) setting));
         factories.put(Vector3dSetting.class, (table, setting) -> vector3dW(table, (Vector3dSetting) setting));
         factories.put(KeyboardHud.CustomKeyListSetting.class, (table, setting) -> customKeyListW(table, (KeyboardHud.CustomKeyListSetting) setting));
+        factories.put(EntitySelectionDataSetting.class, (table, setting) -> entitySelectionDataW(table, (EntitySelectionDataSetting<?>) setting));
     }
 
     @Override
@@ -471,6 +472,11 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
     private void customKeyListW(WTable table, KeyboardHud.CustomKeyListSetting setting) {
         WTable wtable = table.add(theme.table()).expandX().widget();
         KeyboardHud.fillTable(theme, wtable, setting);
+    }
+
+    private void entitySelectionDataW(WTable table, EntitySelectionDataSetting<?> setting) {
+        WTable wtable = table.add(theme.table()).expandX().widget();
+        EntitySelectionDataSetting.fillTable(theme, wtable, setting);
     }
 
     // Other

@@ -7,6 +7,7 @@ package meteordevelopment.meteorclient.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import it.unimi.dsi.fastutil.Stack;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -14,15 +15,17 @@ import meteordevelopment.meteorclient.mixininterface.IEntityRenderState;
 import meteordevelopment.meteorclient.mixininterface.IWorldRenderer;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.BlockSelection;
-import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESP;
 import meteordevelopment.meteorclient.systems.modules.render.Freecam;
 import meteordevelopment.meteorclient.systems.modules.render.NoRender;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESPEntityData;
 import meteordevelopment.meteorclient.systems.modules.world.Ambience;
 import meteordevelopment.meteorclient.utils.OutlineRenderCommandQueue;
 import meteordevelopment.meteorclient.utils.render.NoopImmediateVertexConsumerProvider;
 import meteordevelopment.meteorclient.utils.render.NoopOutlineVertexConsumerProvider;
 import meteordevelopment.meteorclient.utils.render.WrapperImmediateVertexConsumerProvider;
 import meteordevelopment.meteorclient.utils.render.color.Color;
+import meteordevelopment.meteorclient.utils.render.postprocess.ESPGlowShader;
 import meteordevelopment.meteorclient.utils.render.postprocess.EntityShader;
 import meteordevelopment.meteorclient.utils.render.postprocess.PostProcessShaders;
 import net.minecraft.client.gl.Framebuffer;
@@ -40,6 +43,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.Vec3d;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.spongepowered.asm.mixin.Final;
@@ -142,7 +146,7 @@ public abstract class WorldRendererMixin implements IWorldRenderer {
         }
 
         draw(worldState, matrices, PostProcessShaders.CHAMS, entity -> Color.WHITE);
-        draw(worldState, matrices, PostProcessShaders.ESP_GLOW, entity -> esp.getColor(entity));
+        drawEsp(worldState, matrices);
     }
 
     @Unique
@@ -184,9 +188,57 @@ public abstract class WorldRendererMixin implements IWorldRenderer {
         meteor$popEntityOutlineFramebuffer();
     }
 
+
+
+    @Unique
+    private void drawEsp(WorldRenderState worldState, MatrixStack matrices) {
+        ESPGlowShader shader = PostProcessShaders.ESP_GLOW;
+        Vec3d camera = worldState.cameraRenderState.pos;
+        boolean empty = true;
+
+        for (var state : worldState.entityRenderStates) {
+            Entity entity = ((IEntityRenderState) state).meteor$getEntity();
+            if (entity == null) continue;
+
+            if (!shader.shouldDraw(entity)) continue;
+
+            @Nullable ESPEntityData entityData = esp.getEntityData(entity);
+            if (entityData == null || entityData.mode.get() != ESP.Mode.Shader) continue;
+
+            @Nullable Color color = esp.getColor(entityData, entity);
+            if (color == null) continue;
+
+            ESPGlowShader.ESPRenderBatch batch = shader.getBatch(entityData);
+            OutlineRenderCommandQueue commandQueue = batch.commandQueue;
+            commandQueue.setColor(color);
+
+            var renderer = entityRenderManager.getRenderer(state);
+            var offset = renderer.getPositionOffset(state);
+
+            matrices.push();
+            matrices.translate(state.x - camera.x + offset.x, state.y - camera.y + offset.y, state.z - camera.z + offset.z);
+            renderer.render(state, matrices, commandQueue, worldState.cameraRenderState);
+            matrices.pop();
+
+            empty = false;
+        }
+
+        if (empty)
+            return;
+
+        for (ESPGlowShader.ESPRenderBatch batch : shader.getBatches()) {
+            meteor$pushEntityOutlineFramebuffer(batch.framebuffer);
+
+            batch.dispatcher.render();
+            batch.commandQueue.onNextFrame();
+
+            meteor$popEntityOutlineFramebuffer();
+        }
+    }
+
     @ModifyExpressionValue(method = "fillEntityRenderStates", at = @At(value= "INVOKE", target = "Lnet/minecraft/client/render/WorldRenderer;isRenderingReady(Lnet/minecraft/util/math/BlockPos;)Z"))
-    boolean fillEntityRenderStatesIsRenderingReady(boolean original) {
-        if (esp.forceRender()) return true;
+    boolean fillEntityRenderStatesIsRenderingReady(boolean original, @Local Entity entity) {
+        if (esp.forceRender(entity)) return true;
         return original;
     }
 

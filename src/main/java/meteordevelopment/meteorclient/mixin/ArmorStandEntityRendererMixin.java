@@ -7,7 +7,7 @@ package meteordevelopment.meteorclient.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESP;
 import net.minecraft.client.render.entity.ArmorStandEntityRenderer;
 import net.minecraft.entity.EntityType;
 import org.objectweb.asm.Opcodes;

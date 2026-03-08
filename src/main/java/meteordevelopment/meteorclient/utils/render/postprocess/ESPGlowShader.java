@@ -8,18 +8,28 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
-import meteordevelopment.meteorclient.renderer.FixedUniformStorage;
+import meteordevelopment.meteorclient.mixininterface.IWorldRenderer;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.Texture;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESP;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESPEntityData;
+import meteordevelopment.meteorclient.utils.OutlineRenderCommandQueue;
 import meteordevelopment.meteorclient.utils.PostInit;
+import meteordevelopment.meteorclient.utils.render.CustomOutlineVertexConsumerProvider;
+import meteordevelopment.meteorclient.utils.render.NoopImmediateVertexConsumerProvider;
+import meteordevelopment.meteorclient.utils.render.NoopOutlineVertexConsumerProvider;
+import meteordevelopment.meteorclient.utils.render.WrapperImmediateVertexConsumerProvider;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.DynamicUniformStorage;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.gl.SimpleFramebuffer;
+import net.minecraft.client.render.command.RenderDispatcher;
 import net.minecraft.client.util.Window;
 import net.minecraft.entity.Entity;
 import net.minecraft.resource.Resource;
@@ -30,6 +40,8 @@ import org.lwjgl.system.MemoryStack;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -39,13 +51,10 @@ public class ESPGlowShader extends EntityShader {
 
     private static Texture IMAGE_TEX;
     private static ESP esp;
-    private int previousWidth = -1;
-    public int passes = -1;
-    public float offset = -1f;
-    private boolean initialized = false;
 
+    private final Map<ESPRenderKey, ESPRenderBatch> espRenderBatchMap = new Object2ObjectOpenHashMap<>();
     private final GpuTextureView[] fbos = new GpuTextureView[4];
-    private GpuBufferSlice[] ubos;
+    private boolean initialized = false;
 
     public ESPGlowShader() {
         super(MeteorRenderPipelines.POST_OUTLINE_GLOW);
@@ -134,13 +143,15 @@ public class ESPGlowShader extends EntityShader {
         }
         initialized = true;
 
-        // update ubos
-        updateUniforms(offset);
+        // update batch framebuffers
+        for (ESPRenderBatch batch : this.espRenderBatchMap.values()) {
+            batch.framebuffer.resize(width, height);
+        }
     }
 
     @Override
     public void render() {
-        if (this.isMaskEmpty || !this.shouldDraw()) return;
+        if (!this.shouldDraw()) return;
 
         if (!initialized) {
             for (int i = 0; i < fbos.length; i++) {
@@ -149,77 +160,148 @@ public class ESPGlowShader extends EntityShader {
             initialized = true;
         }
 
-        int width = esp.outlineWidth.get();
-        if (width != previousWidth) {
-            previousWidth = width;
+        this.espRenderBatchMap.forEach((options, batch) -> {
+            if (batch.isMaskEmpty) return;
 
-            passes = Math.min(MathHelper.ceil(width / 2.5d), 3);
-            offset = (float) width / passes;
+            int width = options.outlineWidth;
+            int passes = Math.min(MathHelper.ceil(width / 2.5d), 3);
+            float offset = (float) width / passes;
 
-            // update ubos
-            updateUniforms(offset);
-        }
+            GpuBufferSlice[] ubos = uploadUniforms(offset);
 
-        // Initial downsample
-        MeshRenderer.begin()
-            .attachments(fbos[0], null)
-            .pipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN)
-            .fullscreen()
-            .uniform("BlurData", ubos[0])
-            .sampler("u_Texture", framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-            .end();
-
-        // Downsample passes
-        for (int i = 0; i < passes - 1; i++) {
+            // Initial downsample
             MeshRenderer.begin()
-                .attachments(fbos[i + 1], null)
+                .attachments(fbos[0], null)
                 .pipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN)
                 .fullscreen()
-                .uniform("BlurData", ubos[i + 1])
-                .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+                .uniform("BlurData", ubos[0])
+                .sampler("u_Texture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
                 .end();
-        }
 
-        // Upsample passes
-        for (int i = passes - 1; i >= 1; i--) {
-            MeshRenderer.begin()
-                .attachments(fbos[i - 1], null)
-                .pipeline(MeteorRenderPipelines.BLUR_UP)
+            // Downsample passes
+            for (int i = 0; i < passes - 1; i++) {
+                MeshRenderer.begin()
+                    .attachments(fbos[i + 1], null)
+                    .pipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN)
+                    .fullscreen()
+                    .uniform("BlurData", ubos[i + 1])
+                    .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+                    .end();
+            }
+
+            // Upsample passes
+            for (int i = passes - 1; i >= 1; i--) {
+                MeshRenderer.begin()
+                    .attachments(fbos[i - 1], null)
+                    .pipeline(MeteorRenderPipelines.BLUR_UP)
+                    .fullscreen()
+                    .uniform("BlurData", ubos[i - 1])
+                    .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+                    .end();
+            }
+
+            ESP.ShaderMode shaderMode = options.shaderMode;
+
+            // Combination pass
+            MeshRenderer renderer = MeshRenderer.begin()
+                .attachments(MinecraftClient.getInstance().getFramebuffer())
+                .pipeline(shaderMode == ESP.ShaderMode.Glow ? MeteorRenderPipelines.POST_OUTLINE_GLOW : MeteorRenderPipelines.POST_OUTLINE_GLOW_TEX)
                 .fullscreen()
-                .uniform("BlurData", ubos[i - 1])
-                .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-                .end();
+                .sampler("u_MaskTexture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.NEAREST))
+                .sampler("u_BlurTexture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+                .uniform("BlurData", ubos[0])
+                .uniform("OutlineData", OutlineUniforms.write(
+                    options.outlineWidth,
+                    options.fillOpacity,
+                    options.shapeMode,
+                    options.glowMultiplier,
+                    options.colorBlendMode));
+
+            if (shaderMode == ESP.ShaderMode.Glow_Texture) {
+                renderer.sampler("u_OverlayTexture", IMAGE_TEX.getGlTextureView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+            }
+
+            renderer.end();
+        });
+
+        // clear data
+        UNIFORM_STORAGE.clear();
+        this.espRenderBatchMap.values().removeIf(batch -> !batch.used);
+    }
+
+    // Batching
+
+    private record ESPRenderKey(int outlineWidth, float fillOpacity, int shapeMode, float glowMultiplier, int colorBlendMode, ESP.ShaderMode shaderMode) {}
+
+    public static class ESPRenderBatch {
+        public final CustomOutlineVertexConsumerProvider vertexConsumerProvider = new CustomOutlineVertexConsumerProvider();
+        public final OutlineRenderCommandQueue commandQueue = new OutlineRenderCommandQueue();
+        public final RenderDispatcher dispatcher;
+        public Framebuffer framebuffer = new SimpleFramebuffer(MeteorClient.NAME + " ESP Glow Shader", mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight(), true);
+        private boolean used;
+        private boolean isMaskEmpty;
+
+        public ESPRenderBatch() {
+            this.dispatcher = new RenderDispatcher(
+                this.commandQueue,
+                mc.getBlockRenderManager(),
+                new WrapperImmediateVertexConsumerProvider(() -> vertexConsumerProvider),
+                mc.getAtlasManager(),
+                NoopOutlineVertexConsumerProvider.INSTANCE,
+                NoopImmediateVertexConsumerProvider.INSTANCE,
+                mc.textRenderer
+            );
         }
 
-        ESP.ShaderMode shaderMode = esp.shaderMode.get();
-
-        // Combination pass
-        MeshRenderer renderer = MeshRenderer.begin()
-            .attachments(MinecraftClient.getInstance().getFramebuffer())
-            .pipeline(shaderMode == ESP.ShaderMode.Glow ? MeteorRenderPipelines.POST_OUTLINE_GLOW : MeteorRenderPipelines.POST_OUTLINE_GLOW_TEX)
-            .fullscreen()
-            .sampler("u_MaskTexture", framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.NEAREST))
-            .sampler("u_BlurTexture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-            .uniform("BlurData", ubos[0])
-            .uniform("OutlineData", OutlineUniforms.write(
-                esp.outlineWidth.get(),
-                esp.fillOpacity.get().floatValue(),
-                esp.shapeMode.get().ordinal(),
-                esp.glowMultiplier.get().floatValue(),
-                esp.colorBlendMode.get().ordinal()));
-
-        if (shaderMode == ESP.ShaderMode.Glow_Texture) {
-            renderer.sampler("u_OverlayTexture", IMAGE_TEX.getGlTextureView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+        public void close() {
+            dispatcher.close();
+            framebuffer.delete();
         }
+    }
 
-        renderer.end();
+    public ESPRenderBatch getBatch(ESPEntityData entityData) {
+        ESPRenderBatch batch = this.espRenderBatchMap.computeIfAbsent(new ESPRenderKey(
+            entityData.outlineWidth.get(),
+            entityData.fillOpacity.get().floatValue(),
+            entityData.shapeMode.get().ordinal(),
+            entityData.glowMultiplier.get().floatValue(),
+            entityData.colorBlendMode.get().ordinal(),
+            entityData.shaderMode.get()
+        ), key -> new ESPRenderBatch());
+        batch.used = true;
+        return batch;
+    }
+
+    public Collection<ESPRenderBatch> getBatches() {
+        return this.espRenderBatchMap.values();
+    }
+
+    @Override
+    public void submitVertices() {
+        if (!shouldDraw()) return;
+
+        for (ESPRenderBatch batch : this.getBatches()) {
+            ((IWorldRenderer) mc.worldRenderer).meteor$pushEntityOutlineFramebuffer(batch.framebuffer);
+
+            batch.isMaskEmpty = batch.vertexConsumerProvider.isEmpty();
+            batch.vertexConsumerProvider.draw();
+
+            ((IWorldRenderer) mc.worldRenderer).meteor$popEntityOutlineFramebuffer();
+        }
+    }
+
+    @Override
+    public void clearTexture() {
+        if (!shouldDraw()) return;
+
+        for (ESPRenderBatch batch : this.getBatches()) {
+            RenderSystem.getDevice().createCommandEncoder().clearColorTexture(batch.framebuffer.getColorAttachment(), 0);
+        }
     }
 
     // Uniforms
 
-    private void updateUniforms(float offset) {
-        UNIFORM_STORAGE.clear();
-
+    private GpuBufferSlice[] uploadUniforms(float offset) {
         BlurUniformData[] uboData = new BlurUniformData[4];
         for (int i = 0; i < uboData.length; i++) {
             GpuTextureView fbo = fbos[i];
@@ -229,7 +311,7 @@ public class ESPGlowShader extends EntityShader {
             );
         }
 
-        ubos = UNIFORM_STORAGE.writeAll(uboData);
+        return UNIFORM_STORAGE.writeAll(uboData);
     }
 
     private static final int UNIFORM_SIZE = new Std140SizeCalculator()
@@ -237,7 +319,7 @@ public class ESPGlowShader extends EntityShader {
         .putFloat()
         .get();
 
-    private static final FixedUniformStorage<BlurUniformData> UNIFORM_STORAGE = new FixedUniformStorage<>("Meteor - Entity Outline Blur UBO", UNIFORM_SIZE, 4);
+    private static final DynamicUniformStorage<BlurUniformData> UNIFORM_STORAGE = new DynamicUniformStorage<>("Meteor - Entity Outline Blur UBO", UNIFORM_SIZE, 4);
 
     private record BlurUniformData(float halfTexelSizeX, float halfTexelSizeY, float offset) implements DynamicUniformStorage.Uploadable {
         @Override

@@ -8,7 +8,7 @@ package meteordevelopment.meteorclient.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.systems.modules.render.esp.ESP;
 import meteordevelopment.meteorclient.systems.modules.render.Fullbright;
 import meteordevelopment.meteorclient.systems.modules.render.Nametags;
 import meteordevelopment.meteorclient.systems.modules.render.NoRender;
@@ -62,7 +62,7 @@ public abstract class EntityRendererMixin<T extends Entity, S extends EntityRend
 
     @Inject(method = "canBeCulled", at = @At("HEAD"), cancellable = true)
     void canBeCulled(T entity, CallbackInfoReturnable<Boolean> cir) {
-        if (esp.forceRender()) cir.setReturnValue(false);
+        if (esp.forceRender(entity)) cir.setReturnValue(false);
     }
 
     @ModifyReturnValue(method = "getSkyLight", at = @At("RETURN"))

@@ -9,7 +9,7 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class PostProcessShaders {
     public static EntityShader CHAMS;
-    public static EntityShader ESP_GLOW;
+    public static ESPGlowShader ESP_GLOW;
     public static PostProcessShader STORAGE_OUTLINE;
 
     private PostProcessShaders() {}

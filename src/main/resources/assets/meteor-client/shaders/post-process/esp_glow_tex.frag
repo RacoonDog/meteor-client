@@ -25,7 +25,7 @@ vec3 color_blend(vec3 first, vec3 second) {
     if (u_Outline.blendMode == 0) {
         return first * second;
     } else {
-        return vec3(1.0) - (vec3(1.0) - first) * (vec3(1.0) - second);
+        return 1 - (1 - first) * (1 - second);
     }
 }
 
@@ -36,7 +36,7 @@ void main() {
         if (u_Outline.shapeMode == 0) discard;
 
         vec4 overlay = texture(u_OverlayTexture, texCoord);
-        color = vec4(color_blend(vec3(overlay), mask.rgb), overlay.a * u_Outline.fillOpacity);
+        color = vec4(color_blend(overlay.rgb, mask.rgb), overlay.a * u_Outline.fillOpacity);
     } else {
         if (u_Outline.shapeMode == 1) discard;
 
@@ -54,6 +54,6 @@ void main() {
         if (blur.a == 0.0) discard;
 
         vec4 overlay = texture(u_OverlayTexture, texCoord);
-        color = vec4(color_blend(vec3(overlay), blur.rgb / blur.a), min(overlay.a * blur.a * u_Outline.glowMultiplier, 1.0));
+        color = vec4(color_blend(overlay.rgb, blur.rgb / blur.a), min(overlay.a * blur.a * u_Outline.glowMultiplier, 1.0));
     }
 }

@@ -9,12 +9,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.mixininterface.IWorldRenderer;
-import meteordevelopment.meteorclient.renderer.FullScreenRenderer;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.Texture;
@@ -176,44 +174,46 @@ public class ESPGlowShader extends EntityShader {
             GpuBufferSlice[] ubos = uploadUniforms(offset);
 
             // Initial downsample
-            MeshRenderer.begin()
-                .attachments(fbos[0], null)
-                .pipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN)
-                .fullscreen()
-                .uniform("BlurData", ubos[0])
-                .sampler("u_Texture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-                .end();
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader downsample pass #1",
+                fbos[0], OptionalInt.empty())) {
+                pass.setPipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN);
+                pass.setUniform("BlurData", ubos[0]);
+                pass.bindTexture("u_Texture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                pass.draw(0, 3);
+            }
 
             // Downsample passes
             for (int i = 0; i < passes - 1; i++) {
-                MeshRenderer.begin()
-                    .attachments(fbos[i + 1], null)
-                    .pipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN)
-                    .fullscreen()
-                    .uniform("BlurData", ubos[i + 1])
-                    .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-                    .end();
+                int fi = i;
+                try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader downsample pass #" + (fi + 2),
+                    fbos[i + 1], OptionalInt.empty())) {
+                    pass.setPipeline(MeteorRenderPipelines.BLUR_ALPHA_DOWN);
+                    pass.setUniform("BlurData", ubos[i + 1]);
+                    pass.bindTexture("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                    pass.draw(0, 3);
+                }
             }
 
             // Upsample passes
             for (int i = passes - 1; i >= 2; i--) {
-                MeshRenderer.begin()
-                    .attachments(fbos[i - 1], null)
-                    .pipeline(MeteorRenderPipelines.BLUR_UP)
-                    .fullscreen()
-                    .uniform("BlurData", ubos[i - 1])
-                    .sampler("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-                    .end();
+                int fi = passes - i;
+                try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader upsample pass #" + (fi + 2),
+                    fbos[i - 1], OptionalInt.empty())) {
+                    pass.setPipeline(MeteorRenderPipelines.BLUR_UP);
+                    pass.setUniform("BlurData", ubos[i - 1]);
+                    pass.bindTexture("u_Texture", fbos[i], RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                    pass.draw(0, 3);
+                }
             }
 
             // Last upsample pass
-            MeshRenderer.begin()
-                .attachments(batch.targetFbo, null)
-                .pipeline(MeteorRenderPipelines.BLUR_UP)
-                .fullscreen()
-                .uniform("BlurData", ubos[0])
-                .sampler("u_Texture", fbos[1], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
-                .end();
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader upsample pass #last",
+                batch.targetFbo, OptionalInt.empty())) {
+                pass.setPipeline(MeteorRenderPipelines.BLUR_UP);
+                pass.setUniform("BlurData", ubos[0]);
+                pass.bindTexture("u_Texture", fbos[1], RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                pass.draw(0, 3);
+            }
 
             batch.blurUbo = ubos[0];
             batch.outlineUbo = OutlineUniforms.write(
@@ -227,10 +227,6 @@ public class ESPGlowShader extends EntityShader {
         // Combination pass
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader combination pass",
             MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty())) {
-
-            // todo replace with screenquad
-            pass.setVertexBuffer(0, FullScreenRenderer.vbo);
-            pass.setIndexBuffer(FullScreenRenderer.ibo, VertexFormat.IndexType.INT);
 
             this.espRenderBatchMap.forEach((options, batch) -> {
                 ESP.ShaderMode shaderMode = options.shaderMode;
@@ -247,7 +243,7 @@ public class ESPGlowShader extends EntityShader {
                 pass.setUniform("BlurData", batch.blurUbo);
                 pass.setUniform("OutlineData", batch.outlineUbo);
 
-                pass.drawIndexed(0, 0, 6, 1);
+                pass.draw(0, 3);
             });
         }
 

@@ -16,6 +16,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.UniformType;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.resource.ResourceManager;
+import net.minecraft.util.Identifier;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -153,9 +154,9 @@ public abstract class MeteorRenderPipelines {
         .build()
     );
 
-    private static final RenderPipeline.Snippet POST_OUTLINE_GLOW_SNIPPER = new ExtendedRenderPipelineBuilder()
-        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
-        .withVertexShader(MeteorClient.identifier("shaders/passthrough.vert"))
+    private static final RenderPipeline.Snippet POST_OUTLINE_GLOW_SNIPPET = new ExtendedRenderPipelineBuilder()
+        .withVertexFormat(VertexFormats.EMPTY, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(Identifier.ofVanilla("shaders/core/screenquad.vsh"))
         .withSampler("u_MaskTexture")
         .withSampler("u_BlurTexture")
         .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
@@ -166,13 +167,13 @@ public abstract class MeteorRenderPipelines {
         .withCull(false)
         .buildSnippet();
 
-    public static final RenderPipeline POST_OUTLINE_GLOW = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPER)
+    public static final RenderPipeline POST_OUTLINE_GLOW = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPET)
         .withLocation(MeteorClient.identifier("pipeline/post/outline_glow"))
         .withFragmentShader(MeteorClient.identifier("shaders/post-process/esp_glow.frag"))
         .build()
     );
 
-    public static final RenderPipeline POST_OUTLINE_GLOW_TEX = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPER)
+    public static final RenderPipeline POST_OUTLINE_GLOW_TEX = add(new ExtendedRenderPipelineBuilder(POST_OUTLINE_GLOW_SNIPPET)
         .withLocation(MeteorClient.identifier("pipeline/post/outline_glow_tex"))
         .withFragmentShader(MeteorClient.identifier("shaders/post-process/esp_glow_tex.frag"))
         .withSampler("u_OverlayTexture")
@@ -199,8 +200,8 @@ public abstract class MeteorRenderPipelines {
 
     public static final RenderPipeline BLUR_DOWN = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/blur/down"))
-        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
-        .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+        .withVertexFormat(VertexFormats.EMPTY, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(Identifier.ofVanilla("shaders/core/screenquad.vsh"))
         .withFragmentShader(MeteorClient.identifier("shaders/blur_down.frag"))
         .withSampler("u_Texture")
         .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
@@ -214,8 +215,8 @@ public abstract class MeteorRenderPipelines {
 
     public static final RenderPipeline BLUR_UP = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/blur/up"))
-        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
-        .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+        .withVertexFormat(VertexFormats.EMPTY, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(Identifier.ofVanilla("shaders/core/screenquad.vsh"))
         .withFragmentShader(MeteorClient.identifier("shaders/blur_up.frag"))
         .withSampler("u_Texture")
         .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
@@ -228,8 +229,8 @@ public abstract class MeteorRenderPipelines {
 
     public static final RenderPipeline BLUR_ALPHA_DOWN = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/blur/down"))
-        .withVertexFormat(MeteorVertexFormats.POS2, VertexFormat.DrawMode.TRIANGLES)
-        .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+        .withVertexFormat(VertexFormats.EMPTY, VertexFormat.DrawMode.TRIANGLES)
+        .withVertexShader(Identifier.ofVanilla("shaders/core/screenquad.vsh"))
         .withFragmentShader(MeteorClient.identifier("shaders/blur_down.frag"))
         .withSampler("u_Texture")
         .withUniform("BlurData", UniformType.UNIFORM_BUFFER)

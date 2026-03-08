@@ -9,7 +9,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.screens.settings.EntityTypeListSettingScreen;
-import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WMinus;
@@ -98,7 +97,7 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
     @Override
     public T apply(Entity entity) {
         for (SettingEntry<T> entry : this.get()) {
-            if (entry.selection().test(entity)) {
+            if (entry.data().isValid() && entry.selection().test(entity)) {
                 return entry.data();
             }
         }
@@ -109,7 +108,7 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
     @Override
     public boolean test(Entity entity) {
         for (SettingEntry<T> entry : this.get()) {
-            if (entry.selection().test(entity)) {
+            if (entry.data().isValid() && entry.selection().test(entity)) {
                 return true;
             }
         }
@@ -121,11 +120,8 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
         table.clear();
 
         for (EntitySelectionDataSetting.SettingEntry<T> entry : setting.get()) {
-            // Widget
-            @Nullable WWidget widget = entry.data().getWidget(theme, entry.selection(), setting);
-            if (widget != null) {
-                table.add(widget);
-            }
+            // Widgets
+            entry.data().addWidgets(theme, table, entry.selection(), setting);
 
             // Config
             WButton config = table.add(theme.button("Config")).widget();
@@ -135,7 +131,7 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
             };
 
             // Edit
-            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).widget();
+            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).padLeft(16d).widget();
             edit.action = () -> {
                 EntityTypeListSetting tempSetting = new EntityTypeListSetting.Builder()
                     .name("entities")
@@ -160,7 +156,7 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
             // Entity Display
             EntitySelection selection = entry.selection();
             Iterator<EntityType<?>> it = selection.entityTypes.iterator();
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 4; i++) {
                 if (it.hasNext()) table.add(theme.entity(it.next())).expandCellX();
                 else table.add(theme.label("")); // padding
             }
@@ -176,27 +172,6 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
 
             table.row();
         }
-
-        if (!setting.get().isEmpty()) {
-            table.add(theme.horizontalSeparator()).expandX();
-            table.row();
-        }
-
-        WButton add = table.add(theme.button("Add")).expandX().minWidth(200d).widget();
-        add.action = () -> {
-            setting.get().add(new SettingEntry<>(
-                new EntitySelection(),
-                setting.defaultData.get().copy()
-            ));
-            fillTable(theme, table, setting);
-        };
-
-        WButton reset = table.add(theme.button(GuiRenderer.RESET)).widget();
-        reset.action = () -> {
-            setting.reset();
-            fillTable(theme, table, setting);
-        };
-        reset.tooltip = "Reset";
     }
 
     public record SettingEntry<T extends ICopyable<T> & ISerializable<T> & IEntityData<T>>(EntitySelection selection, T data) {}

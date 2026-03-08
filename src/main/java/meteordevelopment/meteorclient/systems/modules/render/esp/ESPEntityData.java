@@ -7,7 +7,8 @@ package meteordevelopment.meteorclient.systems.modules.render.esp;
 
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
-import meteordevelopment.meteorclient.gui.widgets.WWidget;
+import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.misc.ICopyable;
@@ -113,14 +114,25 @@ public class ESPEntityData implements ICopyable<ESPEntityData>, ISerializable<ES
         .build()
     );
 
+    public boolean enabled = true;
+
+    @Override
+    public boolean isValid() {
+        return this.enabled;
+    }
+
     @Override
     public NbtCompound toTag() {
-        return this.settings.toTag();
+        NbtCompound compound = new NbtCompound();
+        compound.put("settings", this.settings.toTag());
+        compound.putBoolean("enabled", this.enabled);
+        return compound;
     }
 
     @Override
     public ESPEntityData fromTag(NbtCompound tag) {
-        this.settings.fromTag(tag);
+        tag.getCompound("settings").ifPresent(this.settings::fromTag);
+        this.enabled = tag.getBoolean("enabled").orElse(true);
         return this;
     }
 
@@ -135,12 +147,15 @@ public class ESPEntityData implements ICopyable<ESPEntityData>, ISerializable<ES
     }
 
     @Override
-    public WWidget getWidget(GuiTheme theme, EntitySelection selection, EntitySelectionDataSetting<ESPEntityData> setting) {
-        return switch (colorMode.get()) {
+    public void addWidgets(GuiTheme theme, WTable table, EntitySelection selection, EntitySelectionDataSetting<ESPEntityData> setting) {
+        WCheckbox enabled = table.add(theme.checkbox(this.enabled)).expandCellX().widget();
+        enabled.action = () -> this.enabled = enabled.checked;
+
+        table.add(switch (colorMode.get()) {
             case Color -> theme.quad(color.get());
             case Health -> theme.item(Items.GOLDEN_APPLE.getDefaultStack());
             case Distance -> theme.item(Items.COMPASS.getDefaultStack());
-        };
+        }).expandCellX();
     }
 
     @Override

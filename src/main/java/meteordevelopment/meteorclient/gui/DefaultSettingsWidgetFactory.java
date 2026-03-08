@@ -477,8 +477,30 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
     }
 
     private <T extends ICopyable<T> & ISerializable<T> & IEntityData<T>> void entitySelectionDataW(WTable table, EntitySelectionDataSetting<T> setting) {
-        WTable wtable = table.add(theme.table()).expandX().widget();
+        WVerticalList verticalList = table.add(theme.verticalList()).expandX().widget();
+        WTable wtable = verticalList.add(theme.table()).expandX().widget();
         EntitySelectionDataSetting.fillTable(theme, wtable, setting);
+
+        if (!setting.get().isEmpty()) {
+            verticalList.add(theme.horizontalSeparator()).expandX();
+        }
+
+        WHorizontalList horizontalList = verticalList.add(theme.horizontalList()).expandX().widget();
+        WButton add = horizontalList.add(theme.button("Add")).expandX().widget();
+        add.action = () -> {
+            setting.get().add(new EntitySelectionDataSetting.SettingEntry<>(
+                new EntitySelection(),
+                setting.defaultData.get().copy()
+            ));
+            EntitySelectionDataSetting.fillTable(theme, wtable, setting);
+        };
+
+        WButton reset = horizontalList.add(theme.button(GuiRenderer.RESET)).widget();
+        reset.action = () -> {
+            setting.reset();
+            EntitySelectionDataSetting.fillTable(theme, wtable, setting);
+        };
+        reset.tooltip = "Reset";
     }
 
     // Other

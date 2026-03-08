@@ -5,7 +5,6 @@
 
 package meteordevelopment.meteorclient.gui.screens.settings;
 
-import com.mojang.blaze3d.textures.FilterMode;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.WindowScreen;
 import meteordevelopment.meteorclient.gui.utils.Cell;
@@ -15,14 +14,10 @@ import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
 import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
-import meteordevelopment.meteorclient.renderer.Texture;
 import meteordevelopment.meteorclient.settings.EntityTypeListSetting;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.Names;
-import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.EntityType;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Pair;
 
@@ -32,8 +27,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class EntityTypeListSettingScreen extends WindowScreen {
-    private static Texture EMPTY_SPAWN_EGG_TEXTURE;
-
     private final EntityTypeListSetting setting;
 
     private WVerticalList list;
@@ -136,32 +129,28 @@ public class EntityTypeListSettingScreen extends WindowScreen {
         Cell<WSection> miscCell = add(misc).expandX();
         miscT = misc.add(theme.table()).expandX().widget();
 
-        var spawnEggItems = Registries.ITEM.stream()
-            .filter(item -> item.getComponents().contains(DataComponentTypes.ENTITY_DATA))
-            .toList();
-
         Consumer<EntityType<?>> entityTypeForEach = entityType -> {
             if (setting.filter == null || setting.filter.test(entityType)) {
                 switch (entityType.getSpawnGroup()) {
                     case CREATURE -> {
                         animalsE.add(entityType);
-                        addEntityType(animalsT, animalsC, entityType, spawnEggItems);
+                        addEntityType(animalsT, animalsC, entityType);
                     }
                     case WATER_AMBIENT, WATER_CREATURE, UNDERGROUND_WATER_CREATURE, AXOLOTLS -> {
                         waterAnimalsE.add(entityType);
-                        addEntityType(waterAnimalsT, waterAnimalsC, entityType, spawnEggItems);
+                        addEntityType(waterAnimalsT, waterAnimalsC, entityType);
                     }
                     case MONSTER -> {
                         monstersE.add(entityType);
-                        addEntityType(monstersT, monstersC, entityType, spawnEggItems);
+                        addEntityType(monstersT, monstersC, entityType);
                     }
                     case AMBIENT -> {
                         ambientE.add(entityType);
-                        addEntityType(ambientT, ambientC, entityType, spawnEggItems);
+                        addEntityType(ambientT, ambientC, entityType);
                     }
                     case MISC -> {
                         miscE.add(entityType);
-                        addEntityType(miscT, miscC, entityType, spawnEggItems);
+                        addEntityType(miscT, miscC, entityType);
                     }
                 }
             }
@@ -229,29 +218,9 @@ public class EntityTypeListSettingScreen extends WindowScreen {
         }
     }
 
-    private void addEntityType(WTable table, WCheckbox tableCheckbox, EntityType<?> entityType, List<Item> spawnEggItems) {
+    private void addEntityType(WTable table, WCheckbox tableCheckbox, EntityType<?> entityType) {
         // Icon
-
-        ItemStack stack = null;
-
-        for (var item : spawnEggItems) {
-            var component = item.getComponents().get(DataComponentTypes.ENTITY_DATA);
-
-            //noinspection DataFlowIssue
-            if (component.getType() == entityType) {
-                stack = item.getDefaultStack();
-                break;
-            }
-        }
-
-        if (stack != null) table.add(theme.item(stack));
-        else {
-            if (EMPTY_SPAWN_EGG_TEXTURE == null) {
-                EMPTY_SPAWN_EGG_TEXTURE = Texture.readResource("/assets/meteor-client/textures/empty_spawn_egg.png", false, FilterMode.NEAREST);
-            }
-
-            table.add(theme.texture(32, 32, 0, EMPTY_SPAWN_EGG_TEXTURE));
-        }
+        table.add(theme.entity(entityType));
 
         // Name
 

@@ -18,17 +18,16 @@ import meteordevelopment.meteorclient.utils.misc.IGetter;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.math.random.LocalRandom;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -91,7 +90,8 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
             }
         }
 
-        return values;
+        set(values);
+        return get();
     }
 
     @Nullable
@@ -121,13 +121,21 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
         table.clear();
 
         for (EntitySelectionDataSetting.SettingEntry<T> entry : setting.get()) {
-            WMinus delete = table.add(theme.minus()).widget();
-            delete.action = () -> {
-                setting.get().remove(entry);
+            // Widget
+            @Nullable WWidget widget = entry.data().getWidget(theme, entry.selection(), setting);
+            if (widget != null) {
+                table.add(widget);
+            }
+
+            // Config
+            WButton config = table.add(theme.button("Config")).widget();
+            config.action = () -> {
+                MinecraftClient.getInstance().setScreen(entry.data().createScreen(theme, entry.selection(), setting));
                 fillTable(theme, table, setting);
             };
 
-            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).expandWidgetX().widget();
+            // Edit
+            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).widget();
             edit.action = () -> {
                 EntityTypeListSetting tempSetting = new EntityTypeListSetting.Builder()
                     .name("entities")
@@ -149,16 +157,20 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
                 fillTable(theme, table, setting);
             };
 
-            table.add(theme.item(Registries.ITEM.getRandom(new LocalRandom(ThreadLocalRandom.current().nextLong())).get().value().getDefaultStack()));
-
-            @Nullable WWidget widget = entry.data().getWidget(theme, entry.selection(), setting);
-            if (widget != null) {
-                table.add(widget).right();
+            // Entity Display
+            EntitySelection selection = entry.selection();
+            Iterator<EntityType<?>> it = selection.entityTypes.iterator();
+            for (int i = 0; i < 3; i++) {
+                if (it.hasNext()) table.add(theme.entity(it.next())).expandCellX();
+                else table.add(theme.label("")); // padding
             }
+            if (it.hasNext()) table.add(theme.label("...")).expandCellX();
+            else table.add(theme.label("")); // padding
 
-            WButton config = table.add(theme.button("Config")).expandWidgetX().widget();
-            config.action = () -> {
-                MinecraftClient.getInstance().setScreen(entry.data().createScreen(theme, entry.selection(), setting));
+            // Delete
+            WMinus delete = table.add(theme.minus()).right().widget();
+            delete.action = () -> {
+                setting.get().remove(entry);
                 fillTable(theme, table, setting);
             };
 
@@ -170,7 +182,7 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
             table.row();
         }
 
-        WButton add = table.add(theme.button("Add")).expandX().widget();
+        WButton add = table.add(theme.button("Add")).expandX().minWidth(200d).widget();
         add.action = () -> {
             setting.get().add(new SettingEntry<>(
                 new EntitySelection(),

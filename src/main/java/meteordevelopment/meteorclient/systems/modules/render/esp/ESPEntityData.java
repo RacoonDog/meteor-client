@@ -108,7 +108,7 @@ public class ESPEntityData implements ICopyable<ESPEntityData>, ISerializable<ES
     public final Setting<SettingColor> color = sgColors.add(new ColorSetting.Builder()
         .name("color")
         .description("The color.")
-        .defaultValue(new SettingColor(25, 25, 25))
+        .defaultValue(new SettingColor(255, 255, 255))
         .visible(() -> colorMode.get() == ESP.ESPColorMode.Color)
         .build()
     );

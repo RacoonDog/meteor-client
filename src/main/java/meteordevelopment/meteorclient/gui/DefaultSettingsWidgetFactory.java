@@ -24,6 +24,8 @@ import meteordevelopment.meteorclient.renderer.Fonts;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.hud.elements.keyboard.KeyboardHud;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.misc.ICopyable;
+import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.client.resource.language.I18n;
 import org.apache.commons.lang3.Strings;
@@ -474,7 +476,7 @@ public class DefaultSettingsWidgetFactory extends SettingsWidgetFactory {
         KeyboardHud.fillTable(theme, wtable, setting);
     }
 
-    private void entitySelectionDataW(WTable table, EntitySelectionDataSetting<?> setting) {
+    private <T extends ICopyable<T> & ISerializable<T> & IEntityData<T>> void entitySelectionDataW(WTable table, EntitySelectionDataSetting<T> setting) {
         WTable wtable = table.add(theme.table()).expandX().widget();
         EntitySelectionDataSetting.fillTable(theme, wtable, setting);
     }

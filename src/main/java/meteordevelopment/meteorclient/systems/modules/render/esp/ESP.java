@@ -22,7 +22,6 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
@@ -264,11 +263,6 @@ public class ESP extends Module {
         if (entity == mc.player && ignoreSelf.get()) return true;
         if (entity == mc.getCameraEntity() && mc.options.getPerspective().isFirstPerson()) return true;
         return !EntityUtils.isInRenderDistance(entity);
-    }
-
-    public boolean shouldSkip(EntityType<?> entityType) {
-        return true; // todo fix
-        //return !entities.get().contains(entityType);
     }
 
     public Color getColor(Entity entity) {

@@ -6,10 +6,12 @@
 package meteordevelopment.meteorclient.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
+import meteordevelopment.meteorclient.mixininterface.IEntityRenderState;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.esp.ESP;
 import net.minecraft.client.render.entity.ArmorStandEntityRenderer;
-import net.minecraft.entity.EntityType;
+import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -21,9 +23,9 @@ public class ArmorStandEntityRendererMixin {
     private static ESP esp;
 
     @ModifyExpressionValue(method = "getRenderLayer(Lnet/minecraft/client/render/entity/state/ArmorStandEntityRenderState;ZZZ)Lnet/minecraft/client/render/RenderLayer;", at = @At(value = "FIELD", target = "Lnet/minecraft/client/render/entity/state/ArmorStandEntityRenderState;marker:Z", opcode = Opcodes.GETFIELD))
-    private boolean modifyMarkerValue(boolean original) {
+    private boolean modifyMarkerValue(boolean original, @Local(argsOnly = true) ArmorStandEntityRenderState renderState) {
         if (esp == null) esp = Modules.get().get(ESP.class);
 
-        return original && !(esp.isActive() && !esp.shouldSkip(EntityType.ARMOR_STAND));
+        return original && !(esp.isActive() && !esp.shouldSkip(((IEntityRenderState) renderState).meteor$getEntity()));
     }
 }

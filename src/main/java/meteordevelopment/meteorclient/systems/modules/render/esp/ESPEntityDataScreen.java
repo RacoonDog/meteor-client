@@ -11,27 +11,26 @@ import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.settings.EntitySelection;
 import meteordevelopment.meteorclient.settings.EntitySelectionDataSetting;
 import meteordevelopment.meteorclient.settings.GenericSetting;
-import meteordevelopment.meteorclient.settings.Setting;
 
 public class ESPEntityDataScreen extends WindowScreen {
     private final ESPEntityData entityData;
-    private final Setting<?> setting;
 
     private WContainer settingsContainer;
 
     public ESPEntityDataScreen(GuiTheme theme, ESPEntityData entityData, EntitySelection selection, EntitySelectionDataSetting<ESPEntityData> setting) {
-        this(theme, entityData, setting, null);
+        this(theme, entityData);
+        this.onClosed(setting::onChanged);
     }
 
     public ESPEntityDataScreen(GuiTheme theme, ESPEntityData entityData, GenericSetting<ESPEntityData> setting) {
-        this(theme, entityData, setting, null);
+        this(theme, entityData);
+        this.onClosed(setting::onChanged);
     }
 
-    private ESPEntityDataScreen(GuiTheme theme, ESPEntityData entityData, Setting<?> setting, Void nothing) {
+    private ESPEntityDataScreen(GuiTheme theme, ESPEntityData entityData) {
         super(theme, "Configure Entity Selection");
 
         this.entityData = entityData;
-        this.setting = setting;
     }
 
     @Override

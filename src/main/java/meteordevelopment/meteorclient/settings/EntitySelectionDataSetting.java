@@ -8,7 +8,7 @@ package meteordevelopment.meteorclient.settings;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
-import meteordevelopment.meteorclient.gui.screens.settings.EntityTypeListSettingScreen;
+import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WMinus;
@@ -26,7 +26,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -131,37 +130,23 @@ public class EntitySelectionDataSetting<T extends ICopyable<T> & ISerializable<T
             };
 
             // Edit
-            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).padLeft(16d).widget();
+            WButton edit = table.add(theme.button(GuiRenderer.EDIT)).widget();
             edit.action = () -> {
-                EntityTypeListSetting tempSetting = new EntityTypeListSetting.Builder()
-                    .name("entities")
-                    .description("Which entities to render in the selection.")
-                    .defaultValue(Set.of())
-                    .onModuleActivated(s -> {
-                        s.get().clear();
-                        s.get().addAll(entry.selection().entityTypes);
-                    })
-                    .onChanged(set -> {
-                        entry.selection().entityTypes.clear();
-                        entry.selection().entityTypes.addAll(set);
-                    })
-                    .build();
-
-                tempSetting.onActivated();
-
-                MinecraftClient.getInstance().setScreen(new EntityTypeListSettingScreen(theme, tempSetting));
-                fillTable(theme, table, setting);
+                MinecraftClient.getInstance().setScreen(new EntitySelection.Screen(theme, entry.selection(), () -> fillTable(theme, table, setting)));
             };
 
             // Entity Display
             EntitySelection selection = entry.selection();
-            Iterator<EntityType<?>> it = selection.entityTypes.iterator();
-            for (int i = 0; i < 4; i++) {
-                if (it.hasNext()) table.add(theme.entity(it.next())).expandCellX();
-                else table.add(theme.label("")); // padding
+            WHorizontalList display = table.add(theme.horizontalList()).expandX().widget();
+            if (selection.name.get().isBlank()) {
+                Iterator<EntityType<?>> it = selection.entityTypes.get().iterator();
+                for (int i = 0; i < 4; i++) {
+                    if (it.hasNext()) display.add(theme.entity(it.next())).expandCellX();
+                }
+                if (it.hasNext()) display.add(theme.label("...")).expandCellX();
+            } else {
+                display.add(theme.label(selection.name.get())).expandX();
             }
-            if (it.hasNext()) table.add(theme.label("...")).expandCellX();
-            else table.add(theme.label("")); // padding
 
             // Delete
             WMinus delete = table.add(theme.minus()).right().widget();

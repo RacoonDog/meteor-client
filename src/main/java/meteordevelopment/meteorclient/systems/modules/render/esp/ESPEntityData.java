@@ -148,14 +148,14 @@ public class ESPEntityData implements ICopyable<ESPEntityData>, ISerializable<ES
 
     @Override
     public void addWidgets(GuiTheme theme, WTable table, EntitySelection selection, EntitySelectionDataSetting<ESPEntityData> setting) {
-        WCheckbox enabled = table.add(theme.checkbox(this.enabled)).expandCellX().widget();
+        WCheckbox enabled = table.add(theme.checkbox(this.enabled)).widget();
         enabled.action = () -> this.enabled = enabled.checked;
 
         table.add(switch (colorMode.get()) {
             case Color -> theme.quad(color.get());
             case Health -> theme.item(Items.GOLDEN_APPLE.getDefaultStack());
             case Distance -> theme.item(Items.COMPASS.getDefaultStack());
-        }).expandCellX();
+        });
     }
 
     @Override

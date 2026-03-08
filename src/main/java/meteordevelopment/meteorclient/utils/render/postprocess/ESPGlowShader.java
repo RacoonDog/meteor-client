@@ -4,14 +4,17 @@ import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
 import com.mojang.blaze3d.platform.TextureUtil;
+import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.mixininterface.IWorldRenderer;
+import meteordevelopment.meteorclient.renderer.FullScreenRenderer;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.Texture;
@@ -43,6 +46,7 @@ import java.nio.IntBuffer;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -118,7 +122,7 @@ public class ESPGlowShader extends EntityShader {
     @Override
     protected void setupPass(MeshRenderer renderer) {}
 
-    private GpuTextureView createFbo(int i) {
+    private static GpuTextureView createFbo(int i) {
         int scale = (int) Math.pow(2, i);
 
         Window window = MinecraftClient.getInstance().getWindow();
@@ -146,12 +150,14 @@ public class ESPGlowShader extends EntityShader {
         // update batch framebuffers
         for (ESPRenderBatch batch : this.espRenderBatchMap.values()) {
             batch.framebuffer.resize(width, height);
+            batch.targetFbo.close();
+            batch.targetFbo = createFbo(0);
         }
     }
 
     @Override
     public void render() {
-        if (!this.shouldDraw()) return;
+        if (!this.shouldDraw() || this.espRenderBatchMap.isEmpty()) return;
 
         if (!initialized) {
             for (int i = 0; i < fbos.length; i++) {
@@ -190,7 +196,7 @@ public class ESPGlowShader extends EntityShader {
             }
 
             // Upsample passes
-            for (int i = passes - 1; i >= 1; i--) {
+            for (int i = passes - 1; i >= 2; i--) {
                 MeshRenderer.begin()
                     .attachments(fbos[i - 1], null)
                     .pipeline(MeteorRenderPipelines.BLUR_UP)
@@ -200,33 +206,55 @@ public class ESPGlowShader extends EntityShader {
                     .end();
             }
 
-            ESP.ShaderMode shaderMode = options.shaderMode;
-
-            // Combination pass
-            MeshRenderer renderer = MeshRenderer.begin()
-                .attachments(MinecraftClient.getInstance().getFramebuffer())
-                .pipeline(shaderMode == ESP.ShaderMode.Glow ? MeteorRenderPipelines.POST_OUTLINE_GLOW : MeteorRenderPipelines.POST_OUTLINE_GLOW_TEX)
+            // Last upsample pass
+            MeshRenderer.begin()
+                .attachments(batch.targetFbo, null)
+                .pipeline(MeteorRenderPipelines.BLUR_UP)
                 .fullscreen()
-                .sampler("u_MaskTexture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.NEAREST))
-                .sampler("u_BlurTexture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
                 .uniform("BlurData", ubos[0])
-                .uniform("OutlineData", OutlineUniforms.write(
-                    options.outlineWidth,
-                    options.fillOpacity,
-                    options.shapeMode,
-                    options.glowMultiplier,
-                    options.colorBlendMode));
+                .sampler("u_Texture", fbos[1], RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+                .end();
 
-            if (shaderMode == ESP.ShaderMode.Glow_Texture) {
-                renderer.sampler("u_OverlayTexture", IMAGE_TEX.getGlTextureView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
-            }
-
-            renderer.end();
+            batch.blurUbo = ubos[0];
+            batch.outlineUbo = OutlineUniforms.write(
+                options.outlineWidth,
+                options.fillOpacity,
+                options.shapeMode,
+                options.glowMultiplier,
+                options.colorBlendMode);
         });
+
+        // Combination pass
+        try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> MeteorClient.NAME + " ESPGlowShader combination pass",
+            MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView(), OptionalInt.empty())) {
+
+            // todo replace with screenquad
+            pass.setVertexBuffer(0, FullScreenRenderer.vbo);
+            pass.setIndexBuffer(FullScreenRenderer.ibo, VertexFormat.IndexType.INT);
+
+            this.espRenderBatchMap.forEach((options, batch) -> {
+                ESP.ShaderMode shaderMode = options.shaderMode;
+                pass.setPipeline(shaderMode == ESP.ShaderMode.Glow ? MeteorRenderPipelines.POST_OUTLINE_GLOW : MeteorRenderPipelines.POST_OUTLINE_GLOW_TEX);
+
+                // bind textures
+                pass.bindTexture("u_MaskTexture", batch.framebuffer.getColorAttachmentView(), RenderSystem.getSamplerCache().get(FilterMode.NEAREST));
+                pass.bindTexture("u_BlurTexture", batch.targetFbo, RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                if (shaderMode == ESP.ShaderMode.Glow_Texture) {
+                    pass.bindTexture("u_OverlayTexture", IMAGE_TEX.getGlTextureView(), RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                }
+
+                // bind uniforms
+                pass.setUniform("BlurData", batch.blurUbo);
+                pass.setUniform("OutlineData", batch.outlineUbo);
+
+                pass.drawIndexed(0, 0, 6, 1);
+            });
+        }
 
         // clear data
         UNIFORM_STORAGE.clear();
         this.espRenderBatchMap.values().removeIf(batch -> !batch.used);
+        this.espRenderBatchMap.values().forEach(batch -> batch.used = false);
     }
 
     // Batching
@@ -237,11 +265,14 @@ public class ESPGlowShader extends EntityShader {
         public final CustomOutlineVertexConsumerProvider vertexConsumerProvider = new CustomOutlineVertexConsumerProvider();
         public final OutlineRenderCommandQueue commandQueue = new OutlineRenderCommandQueue();
         public final RenderDispatcher dispatcher;
-        public Framebuffer framebuffer = new SimpleFramebuffer(MeteorClient.NAME + " ESP Glow Shader", mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight(), true);
+        public final Framebuffer framebuffer = new SimpleFramebuffer(MeteorClient.NAME + " ESP Glow Shader", mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight(), true);
+        private GpuTextureView targetFbo;
+        private GpuBufferSlice blurUbo;
+        private GpuBufferSlice outlineUbo;
         private boolean used;
         private boolean isMaskEmpty;
 
-        public ESPRenderBatch() {
+        private ESPRenderBatch(ESPRenderKey options) {
             this.dispatcher = new RenderDispatcher(
                 this.commandQueue,
                 mc.getBlockRenderManager(),
@@ -251,11 +282,14 @@ public class ESPGlowShader extends EntityShader {
                 NoopImmediateVertexConsumerProvider.INSTANCE,
                 mc.textRenderer
             );
+
+            this.targetFbo = createFbo(0);
         }
 
         public void close() {
             dispatcher.close();
             framebuffer.delete();
+            targetFbo.close();
         }
     }
 
@@ -267,7 +301,7 @@ public class ESPGlowShader extends EntityShader {
             entityData.glowMultiplier.get().floatValue(),
             entityData.colorBlendMode.get().ordinal(),
             entityData.shaderMode.get()
-        ), key -> new ESPRenderBatch());
+        ), ESPRenderBatch::new);
         batch.used = true;
         return batch;
     }

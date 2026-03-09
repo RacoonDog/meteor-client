@@ -20,6 +20,7 @@ import meteordevelopment.meteorclient.utils.render.NametagUtils;
 import meteordevelopment.meteorclient.utils.render.WireframeEntityRenderer;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
+import meteordevelopment.meteorclient.utils.render.postprocess.PostProcessShaders;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -313,7 +314,11 @@ public class ESP extends Module {
 
     @Override
     public String getInfoString() {
-        return Integer.toString(count);
+        return String.format(
+            "[ E: %s; B: %s]",
+            count,
+            PostProcessShaders.ESP_GLOW.getBatches().size()
+        );
     }
 
     public boolean isShader() {

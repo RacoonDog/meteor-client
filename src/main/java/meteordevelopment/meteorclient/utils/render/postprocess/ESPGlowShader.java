@@ -211,7 +211,7 @@ public class ESPGlowShader extends EntityShader {
                 batch.targetFbo, OptionalInt.empty())) {
                 pass.setPipeline(MeteorRenderPipelines.BLUR_UP);
                 pass.setUniform("BlurData", ubos[0]);
-                pass.bindTexture("u_Texture", fbos[1], RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+                pass.bindTexture("u_Texture", fbos[0], RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
                 pass.draw(0, 3);
             }
 

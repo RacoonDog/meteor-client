@@ -155,7 +155,7 @@ public class ESPGlowShader extends EntityShader {
 
     @Override
     public void render() {
-        if (!this.shouldDraw() || this.espRenderBatchMap.isEmpty()) return;
+        if (!this.shouldDraw()) return;
 
         if (!initialized) {
             for (int i = 0; i < fbos.length; i++) {
@@ -163,6 +163,9 @@ public class ESPGlowShader extends EntityShader {
             }
             initialized = true;
         }
+
+        this.espRenderBatchMap.values().removeIf(batch -> !batch.used);
+        if (this.espRenderBatchMap.isEmpty()) return;
 
         this.espRenderBatchMap.forEach((options, batch) -> {
             if (batch.isMaskEmpty) return;
@@ -222,6 +225,8 @@ public class ESPGlowShader extends EntityShader {
                 options.shapeMode,
                 options.glowMultiplier,
                 options.colorBlendMode);
+
+            batch.used = false;
         });
 
         // Combination pass
@@ -249,8 +254,6 @@ public class ESPGlowShader extends EntityShader {
 
         // clear data
         UNIFORM_STORAGE.clear();
-        this.espRenderBatchMap.values().removeIf(batch -> !batch.used);
-        this.espRenderBatchMap.values().forEach(batch -> batch.used = false);
     }
 
     // Batching

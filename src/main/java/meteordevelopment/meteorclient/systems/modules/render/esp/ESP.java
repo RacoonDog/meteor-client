@@ -315,7 +315,7 @@ public class ESP extends Module {
     @Override
     public String getInfoString() {
         return String.format(
-            "[ E: %s; B: %s]",
+            "[E: %s; B: %s]",
             count,
             PostProcessShaders.ESP_GLOW.getBatches().size()
         );

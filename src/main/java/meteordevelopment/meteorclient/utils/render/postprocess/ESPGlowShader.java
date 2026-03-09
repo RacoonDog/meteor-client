@@ -10,6 +10,7 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.mixininterface.IWorldRenderer;
@@ -41,10 +42,7 @@ import org.lwjgl.system.MemoryStack;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalInt;
+import java.util.*;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -55,6 +53,7 @@ public class ESPGlowShader extends EntityShader {
     private static ESP esp;
 
     private final Map<ESPRenderKey, ESPRenderBatch> espRenderBatchMap = new Object2ObjectOpenHashMap<>();
+    private final List<ESPRenderBatch> renderBatchPool = new ObjectArrayList<>();
     private final GpuTextureView[] fbos = new GpuTextureView[4];
     private boolean initialized = false;
 
@@ -164,7 +163,7 @@ public class ESPGlowShader extends EntityShader {
             initialized = true;
         }
 
-        this.espRenderBatchMap.values().removeIf(batch -> !batch.used);
+        this.espRenderBatchMap.values().removeIf(ESPRenderBatch::tryFree);
         if (this.espRenderBatchMap.isEmpty()) return;
 
         this.espRenderBatchMap.forEach((options, batch) -> {
@@ -260,7 +259,7 @@ public class ESPGlowShader extends EntityShader {
 
     private record ESPRenderKey(int outlineWidth, float fillOpacity, int shapeMode, float glowMultiplier, int colorBlendMode, ESP.ShaderMode shaderMode) {}
 
-    public static class ESPRenderBatch {
+    public class ESPRenderBatch {
         public final CustomOutlineVertexConsumerProvider vertexConsumerProvider = new CustomOutlineVertexConsumerProvider();
         public final OutlineRenderCommandQueue commandQueue = new OutlineRenderCommandQueue();
         public final RenderDispatcher dispatcher;
@@ -271,7 +270,7 @@ public class ESPGlowShader extends EntityShader {
         private boolean used;
         private boolean isMaskEmpty;
 
-        private ESPRenderBatch(ESPRenderKey options) {
+        private ESPRenderBatch() {
             this.dispatcher = new RenderDispatcher(
                 this.commandQueue,
                 mc.getBlockRenderManager(),
@@ -285,10 +284,23 @@ public class ESPGlowShader extends EntityShader {
             this.targetFbo = createFbo(0);
         }
 
-        public void close() {
-            dispatcher.close();
-            framebuffer.delete();
-            targetFbo.close();
+        public boolean tryFree() {
+            if (!this.used) {
+                this.blurUbo = null;
+                this.outlineUbo = null;
+
+                if (renderBatchPool.size() < 3) {
+                    renderBatchPool.add(this);
+                } else {
+                    this.dispatcher.close();
+                    this.framebuffer.delete();
+                    this.targetFbo.close();
+                }
+
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -300,9 +312,25 @@ public class ESPGlowShader extends EntityShader {
             entityData.glowMultiplier.get().floatValue(),
             entityData.colorBlendMode.get().ordinal(),
             entityData.shaderMode.get()
-        ), ESPRenderBatch::new);
+        ), key -> this.createBatch());
         batch.used = true;
         return batch;
+    }
+
+    private ESPRenderBatch createBatch() {
+        if (!renderBatchPool.isEmpty()) {
+            ESPRenderBatch renderBatch = renderBatchPool.removeLast();
+
+            if (renderBatch.framebuffer.textureWidth != mc.getWindow().getFramebufferWidth() || renderBatch.framebuffer.textureHeight != mc.getWindow().getFramebufferHeight()) {
+                renderBatch.framebuffer.resize(mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+                renderBatch.targetFbo.close();
+                renderBatch.targetFbo = createFbo(0);
+            }
+
+            return renderBatch;
+        } else {
+            return new ESPRenderBatch();
+        }
     }
 
     public Collection<ESPRenderBatch> getBatches() {

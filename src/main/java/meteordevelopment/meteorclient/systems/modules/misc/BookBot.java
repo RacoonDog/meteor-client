@@ -12,14 +12,12 @@ import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
-import meteordevelopment.meteorclient.mixin.TextHandlerAccessor;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.client.font.TextHandler;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.WritableBookContentComponent;
 import net.minecraft.component.type.WrittenBookContentComponent;
@@ -208,7 +206,7 @@ public class BookBot extends Module {
 
         if (mode.get() == Mode.Random) {
             int origin = onlyAscii.get() ? 0x21 : 0x0800;
-            int bound = onlyAscii.get() ? 0x7E : 0x10FFFF;
+            int bound = onlyAscii.get() ? 0x7E : 0xFFFF;
 
             writeBook(
                 // Generate a random load of ints to use as random characters
@@ -273,60 +271,22 @@ public class BookBot extends Module {
             List<StringVisitable> wrappedLines = mc.textRenderer.wrapLinesWithoutLanguage(Text.literal(text.toString()), 114);
             processLinesToPages(wrappedLines, pages, filteredPages, maxPages);
         } else {
-            // Non-word-wrapping logic
-            TextHandler.WidthRetriever widthRetriever = ((TextHandlerAccessor) mc.textRenderer.getTextHandler()).meteor$getWidthRetriever();
             int pageIndex = 0;
-            int lineIndex = 0;
             final StringBuilder page = new StringBuilder();
-            float lineWidth = 0;
 
-            while (chars.hasNext()) {
-                int c = chars.nextInt();
-
-                if (c == '\r' || c == '\n') {
-                    page.append('\n');
-                    lineWidth = 0;
-                    lineIndex++;
-                } else {
-                    float charWidth = widthRetriever.getWidth(c, Style.EMPTY);
-
-                    // Reached end of line
-                    if (lineWidth + charWidth > 114f) {
-                        page.append('\n');
-                        lineWidth = charWidth;
-                        lineIndex++;
-                        // Wrap to next line, unless wrapping to next page
-                        if (lineIndex != 14) page.appendCodePoint(c);
-                    } else if (lineWidth == 0f && c == ' ') {
-                        continue; // Prevent leading space from text wrapping
-                    } else {
-                        lineWidth += charWidth;
-                        page.appendCodePoint(c);
-                    }
+            while (pageIndex != maxPages) {
+                for (int i = 0; i < 1024 && chars.hasNext(); i++) {
+                    page.appendCodePoint(chars.nextInt());
                 }
 
-                // Reached end of page
-                if (lineIndex == 14) {
-                    filteredPages.add(RawFilteredPair.of(Text.of(page.toString())));
-                    pages.add(page.toString());
+                if (!page.isEmpty()) {
+                    String builtPage = page.toString();
+                    filteredPages.add(RawFilteredPair.of(Text.of(builtPage)));
+                    pages.add(builtPage);
                     page.setLength(0);
-                    pageIndex++;
-                    lineIndex = 0;
-
-                    // No more pages
-                    if (pageIndex == maxPages) break;
-
-                    // Wrap to next page
-                    if (c != '\r' && c != '\n') {
-                        page.appendCodePoint(c);
-                    }
                 }
-            }
 
-            // No more characters, end current page
-            if (!page.isEmpty() && pageIndex != maxPages) {
-                filteredPages.add(RawFilteredPair.of(Text.of(page.toString())));
-                pages.add(page.toString());
+                pageIndex++;
             }
         }
 

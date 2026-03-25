@@ -183,7 +183,6 @@
     "StatusEffectInstanceMixin",
     "StringHelperMixin",
     "SweetBerryBushBlockMixin",
-    "TextHandlerAccessor",
     "TextMixin",
     "TextRendererMixin",
     "TextVisitFactoryMixin",

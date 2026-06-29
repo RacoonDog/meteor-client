@@ -40,6 +40,8 @@ accessible   method  net/minecraft/client/multiplayer/MultiPlayerGameMode startP
 
 # GuiGraphicsExtractorAccessor
 accessible   class   net/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack
+accessible   class   net/minecraft/client/renderer/state/gui/GuiRenderState$Node
+
 # WireframeEntityRenderer#getBuffer
 accessible   field   net/minecraft/client/renderer/rendertype/RenderSetup outputTarget Lnet/minecraft/client/renderer/rendertype/OutputTarget;
 

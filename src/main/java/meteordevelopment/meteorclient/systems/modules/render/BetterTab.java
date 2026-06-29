@@ -78,6 +78,12 @@ public class BetterTab extends Module {
         .build()
     );
 
+    public final Setting<Boolean> crosbyMode = sgGeneral.add(new BoolSetting.Builder()
+        .name("crosby-mode")
+        .description("crosby go brrr")
+        .defaultValue(true)
+        .build()
+    );
 
     public BetterTab() {
         super(Categories.Render, "better-tab", "Various improvements to the tab list.");

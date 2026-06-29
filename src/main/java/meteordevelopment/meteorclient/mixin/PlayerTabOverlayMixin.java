@@ -28,8 +28,6 @@ import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.sprite.SpriteId;
-import net.minecraft.data.AtlasIds;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -110,39 +108,33 @@ public abstract class PlayerTabOverlayMixin {
     // I'm going crosby mode !!
 
     @Inject(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(I)I"))
-    private void saveRenderNodes(GuiGraphicsExtractor graphics, int screenWidth, Scoreboard scoreboard, Objective displayObjective, CallbackInfo ci, @Share("background") LocalRef<GuiRenderState.Node> backgroundRef, @Share("foreground") LocalRef<GuiRenderState.Node> foregroundRef, @Share("enabled") LocalBooleanRef enabledRef) {
-        GuiRenderState renderState = ((GuiGraphicsExtractorAccessor) graphics).getGuiRenderState();
-        GuiRenderStateAccessor accessor = (GuiRenderStateAccessor) renderState;
-
-        // renderState.up();
-        backgroundRef.set(accessor.meteor$getCurrent());
-        renderState.up();
-        foregroundRef.set(accessor.meteor$getCurrent());
-
+    private void saveRenderNodes(GuiGraphicsExtractor graphics, int screenWidth, Scoreboard scoreboard, Objective displayObjective, CallbackInfo ci, @Share("enabled") LocalBooleanRef enabledRef) {
         BetterTab betterTab = Modules.get().get(BetterTab.class);
-        enabledRef.set(betterTab.crosbyMode.get());
+        enabledRef.set(betterTab.isActive() && betterTab.crosbyMode.get());
     }
 
     @WrapOperation(method = "extractRenderState", slice = @Slice(
         from = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(I)I"),
         to = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;extractPingIcon(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIILnet/minecraft/client/multiplayer/PlayerInfo;)V")
     ), at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V"))
-    private void wrapBackgroundExtraction(GuiGraphicsExtractor instance, int x0, int y0, int x1, int y1, int col, Operation<Void> original, @Share("background") LocalRef<GuiRenderState.Node> backgroundRef, @Share("enabled") LocalBooleanRef enabledRef) {
+    private void wrapBackgroundExtraction(GuiGraphicsExtractor instance, int x0, int y0, int x1, int y1, int col, Operation<Void> original, @Share("enabled") LocalBooleanRef enabledRef) {
         if (enabledRef.get()) {
-            backgroundRef.get().addGuiElement(new ColoredRectangleRenderState(RenderPipelines.GUI, TextureSetup.noTexture(), new Matrix3x2f(instance.pose()), x0, y0, x1, y1, col, col, ((GuiGraphicsExtractorAccessor) instance).getScissorStack().peek()));
+            GuiRenderState.Node current = ((GuiRenderStateAccessor) ((GuiGraphicsExtractorAccessor) instance).getGuiRenderState()).meteor$getCurrent();
+            current.addGuiElement(new ColoredRectangleRenderState(RenderPipelines.GUI, TextureSetup.noTexture(), new Matrix3x2f(instance.pose()), x0, y0, x1, y1, col, col, ((GuiGraphicsExtractorAccessor) instance).getScissorStack().peek()));
         } else {
             original.call(instance, x0, y0, x1, y1, col);
         }
     }
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerFaceExtractor;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"))
-    private void wrapPlayerHeadExtraction(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip, int color, Operation<Void> original, @Share("foreground") LocalRef<GuiRenderState.Node> foregroundRef, @Share("enabled") LocalBooleanRef enabledRef) {
+    private void wrapPlayerHeadExtraction(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip, int color, Operation<Void> original, @Share("enabled") LocalBooleanRef enabledRef) {
         if (enabledRef.get()) {
+            GuiRenderState.Node current = ((GuiRenderStateAccessor) ((GuiGraphicsExtractorAccessor) graphics).getGuiRenderState()).meteor$getCurrent();
             float v = 8 + (flip ? 8 : 0);
             int height = 8 * (flip ? -1 : 1);
-            blit(graphics, foregroundRef.get(), RenderPipelines.GUI_TEXTURED, texture, x, y, 8.0F, v, size, size, 8, height, 64, 64, color);
+            blit(graphics, current, RenderPipelines.GUI_TEXTURED, texture, x, y, 8.0F, v, size, size, 8, height, 64, 64, color);
             if (hat) {
-                blit(graphics, foregroundRef.get(), RenderPipelines.GUI_TEXTURED, texture, x, y, 40.0F, v, size, size, 8, height, 64, 64, color);
+                blit(graphics, current, RenderPipelines.GUI_TEXTURED, texture, x, y, 40.0F, v, size, size, 8, height, 64, 64, color);
             }
         } else {
             original.call(graphics, texture, x, y, size, hat, flip, color);
@@ -150,9 +142,10 @@ public abstract class PlayerTabOverlayMixin {
     }
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"))
-    private void wrapPlayerNameExtraction(GuiGraphicsExtractor instance, Font font, Component str, int x, int y, int color, Operation<Void> original, @Share("foreground") LocalRef<GuiRenderState.Node> foregroundRef, @Share("enabled") LocalBooleanRef enabledRef) {
+    private void wrapPlayerNameExtraction(GuiGraphicsExtractor instance, Font font, Component str, int x, int y, int color, Operation<Void> original, @Share("enabled") LocalBooleanRef enabledRef) {
         if (enabledRef.get()) {
-            foregroundRef.get().addText(new GuiTextRenderState(font, str.getVisualOrderText(), new Matrix3x2f(instance.pose()), x, y, color, 0, true, false, ((GuiGraphicsExtractorAccessor) instance).getScissorStack().peek()));
+            GuiRenderState.Node current = ((GuiRenderStateAccessor) ((GuiGraphicsExtractorAccessor) instance).getGuiRenderState()).meteor$getCurrent();
+            current.addText(new GuiTextRenderState(font, str.getVisualOrderText(), new Matrix3x2f(instance.pose()), x, y, color, 0, true, false, ((GuiGraphicsExtractorAccessor) instance).getScissorStack().peek()));
         } else {
             original.call(instance, font, str, x, y, color);
         }
@@ -160,7 +153,6 @@ public abstract class PlayerTabOverlayMixin {
 
     @WrapOperation(method = "extractPingIcon", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
     private void wrapPingExtraction(GuiGraphicsExtractor instance, RenderPipeline renderPipeline, Identifier location, int x, int y, int width, int height, Operation<Void> original) {
-
         BetterTab betterTab = Modules.get().get(BetterTab.class);
         if (betterTab.crosbyMode.get()) {
             GuiGraphicsExtractorAccessor accessor = (GuiGraphicsExtractorAccessor) instance;
@@ -168,8 +160,6 @@ public abstract class PlayerTabOverlayMixin {
             TextureAtlasSprite sprite = accessor.meteor$getGuiSprites().getSprite(location);
             blit(instance, current, RenderPipelines.GUI_TEXTURED, sprite.atlasLocation(), x, y, width, height, sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1(), -1);
         } else {
-
-
             original.call(instance, renderPipeline, location, x, y, width, height);
         }
     }

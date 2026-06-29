@@ -26,9 +26,6 @@ import java.util.List;
 
 @Mixin(PlayerTabOverlay.class)
 public abstract class PlayerTabOverlayMixin {
-    @Shadow
-    protected abstract List<PlayerInfo> getPlayerInfos();
-
     @ModifyConstant(constant = @Constant(longValue = 80L), method = "getPlayerInfos")
     private long modifyCount(long count) {
         BetterTab module = Modules.get().get(BetterTab.class);
@@ -51,13 +48,13 @@ public abstract class PlayerTabOverlayMixin {
     }
 
     @Inject(method = "extractRenderState", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I", shift = At.Shift.BEFORE))
-    private void modifyHeight(CallbackInfo ci, @Local(name = "rows") LocalIntRef rows, @Local(name = "cols") LocalIntRef cols) {
+    private void modifyHeight(CallbackInfo ci, @Local(name = "rows") LocalIntRef rows, @Local(name = "cols") LocalIntRef cols, @Local(name = "slots") int playerCount) {
         BetterTab module = Modules.get().get(BetterTab.class);
         if (!module.isActive()) return;
 
         int newRows;
         int newCols = 1;
-        int totalPlayers = newRows = this.getPlayerInfos().size();
+        int totalPlayers = newRows = playerCount;
         while (newRows > module.tabHeight.get()) {
             newRows = (totalPlayers + ++newCols - 1) / newCols;
         }
